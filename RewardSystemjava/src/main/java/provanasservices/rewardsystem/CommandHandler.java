@@ -26,7 +26,7 @@ public class CommandHandler implements CommandExecutor {
 
         }
 
-        if(args[0].equalsIgnoreCase("reload") && sender.hasPermission("rewardsystem.reload")){
+        else if(args[0].equalsIgnoreCase("reload") && sender.hasPermission("rewardsystem.reload")){
             plugin.reloadConfig();
             plugin.saveDefaultConfig();
             rewardsFromConfig = getRewardsFromConfig(plugin);

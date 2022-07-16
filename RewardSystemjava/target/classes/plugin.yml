@@ -1,0 +1,4 @@
+name: RewardSystem
+version: '1.0-SNAPSHOT'
+main: provanasservices.rewardsystem.Main
+api-version: 1.16

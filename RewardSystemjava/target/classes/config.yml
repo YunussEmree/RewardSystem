@@ -1,5 +1,8 @@
     #Reward system config
     #Authors: _KatilCivciv_, MetuMortis
+Debug:
+    enabled: false
+    #if these settings is true, all the "op" players can see mob details when hit the mob
 
 RewardSystem:
     1:
@@ -13,11 +16,11 @@ RewardSystem:
             #the mob type check
         WorldCheck:
             enabled: true
-            worldname: "ExampleWorld"
+            worldName: "ExampleWorld"
             #the world that the mob should be in
         RegionCheck:
             enabled: true
-            regionname: "ExampleRegion"
+            regionName: "ExampleRegion"
             #the region that the mob should be in
         RewardCommands:
             #reward commands. If you set "none" it won't reward. You can increase or decrease the number of rewards to be given to different people.
@@ -71,6 +74,7 @@ RewardSystem:
                 #Message to write after mob dies
             radius: 50
             #will print a message to players in a certain radius near the mob.
+            #if you set "-1" this message will be sent all players
     2:
         NameCheck:
             enabled: true
@@ -80,10 +84,10 @@ RewardSystem:
             type: VILLAGER
         WorldCheck:
             enabled: true
-            worldname: "world"
+            worldName: "world"
         RegionCheck:
             enabled: true
-            regionname: "bossregion"
+            regionName: "bossregion"
         RewardCommands:
             all:
                 - "give %player% golden_apple 1"
@@ -98,11 +102,11 @@ RewardSystem:
                 - "&a▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀"
                 - "&6    MetuMortis Was Defeated"
                 - "&f"
-                - "&c&l       1. %damager1%"
-                - "&6&l       2. %damager2%"
-                - "&e&l       3. %damager3%"
+                - "&c&l       1. %damager_1%"
+                - "&6&l       2. %damager_2%"
+                - "&e&l       3. %damager_3%"
                 - "&f"
-                - "&b      Your damage: %personaldamage%"
+                - "&b      Your damage: %personal_damage%"
                 - "&f"
                 - "&a▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀"
                 #Message to write after mob dies

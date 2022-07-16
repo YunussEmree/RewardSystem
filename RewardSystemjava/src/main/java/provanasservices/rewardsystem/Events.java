@@ -32,7 +32,7 @@ public class Events implements Listener {
     public void onDamage(EntityDamageByEntityEvent event) {
         Entity entity = event.getEntity();
         Entity damager = event.getDamager();
-        if ((damager instanceof Player) || (entity instanceof Mob)) {
+        if ((damager instanceof Player) && (entity instanceof Mob)) {
             Mob mob = (Mob) entity;
             Player player = (Player) damager;
             RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
@@ -116,10 +116,12 @@ public class Events implements Listener {
 
         else if(damager instanceof Arrow){
             Projectile proj = (Projectile) event.getDamager();
+            if(!(proj.getShooter() instanceof Player)) return;
+            if(!(entity instanceof Mob)) return;
             Player player = (Player) proj.getShooter();
 
             Mob mob = (Mob) entity;
-            RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
+
 
 
             for (int i = 0; i < rewardsFromConfig.size(); i++) {
@@ -131,7 +133,7 @@ public class Events implements Listener {
                         World world = Bukkit.getWorld(reward.getEnabledWorld());
                         assert world != null;
                         if (reward.getEnabledRegion() != null) {
-
+                            RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
                             RegionManager regions = container.get(BukkitAdapter.adapt(world));
                             ProtectedRegion region = regions.getRegion(reward.getEnabledRegion());
                             if (region.contains(BukkitAdapter.asBlockVector(entity.getLocation()))) {
@@ -161,7 +163,7 @@ public class Events implements Listener {
                             World world = Bukkit.getWorld(reward.getEnabledWorld());
                             assert world != null;
                             if (reward.getEnabledRegion() != null) {
-
+                                RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
                                 RegionManager regions = container.get(BukkitAdapter.adapt(world));
                                 ProtectedRegion region = regions.getRegion(reward.getEnabledRegion());
                                 if (region.contains(BukkitAdapter.asBlockVector(entity.getLocation()))) {
@@ -227,8 +229,7 @@ public class Events implements Listener {
     private static String replacePlaceholders(String string, String playerName,  HashMap<String, Double> map){
         ArrayList<Map.Entry<String, Double>> entries =new ArrayList<>(map.entrySet());
         entries.sort((o1, o2) -> o2.getValue().compareTo(o1.getValue()));
-        System.out.println(entries);
-        Pattern pattern = Pattern.compile("%damager_(\\d+)%");
+        Pattern pattern = Pattern.compile("%top_name_(\\d+)%");
         Matcher matcher = pattern.matcher(string);
         String newStr = string;
         while(matcher.find()){
@@ -238,7 +239,18 @@ public class Events implements Listener {
                 newStr = newStr.replace(matcher.group(), entries.get(index).getKey());
             }
         }
-        newStr = newStr.replace("%personal_damage%", String.valueOf(map.get(playerName)));
+        pattern = Pattern.compile("%top_damage_(\\d+)%");
+        matcher = pattern.matcher(newStr);
+        while(matcher.find()){
+            System.out.println(matcher.group(1));
+            int index = Integer.parseInt(matcher.group(1))-1;
+            if(index < entries.size()){
+                newStr = newStr.replace(matcher.group(), entries.get(index).getValue().toString());
+            }
+        }
+
+
+        newStr = newStr.replace("%personal_damage%", String.valueOf(map.get(playerName)) != null ? String.valueOf(Math.round(map.get(playerName))) : "0");
         return newStr;
     }
 
@@ -246,50 +258,27 @@ public class Events implements Listener {
     public void debug(EntityDamageByEntityEvent event){
 
         Entity entity = event.getEntity();
-        if (entity instanceof Player) {
-            Player player = (Player) entity;
+        Entity damager = event.getDamager();
+        if (damager instanceof Player) {
+            Player player = (Player) damager;
             if(player.isOp()){
-                World world = entity.getLocation().getWorld();
-                String type = entity.getType().getName();
-                String name = entity.getName();
+                if(plugin.getConfig().getBoolean("Debug.enabled")) {
+                    String world = entity.getLocation().getWorld().getName();
+                    String type = entity.getType().name();
+                    String name = entity.getName();
 
-                player.sendMessage("§a§l-------[REWARD SYSTEM DEBUG MESSAGE]-------");
-                player.sendMessage(ChatColor.AQUA + "if you wont see this message, you should set debug: false in config.yml");
-                player.sendMessage(ChatColor.AQUA + " ");
-                player.sendMessage(ChatColor.BLUE + "Mob world: " + world);
-                player.sendMessage(ChatColor.BLUE + "Mob type: " + type);
-                player.sendMessage(ChatColor.BLUE + "Mob name: " + name);
-                player.sendMessage("§a§l------------------------------------------");
+                    player.sendMessage("§a§l-------[REWARD SYSTEM DEBUG MESSAGE]-------");
+                    player.sendMessage(ChatColor.AQUA + "if you wont see this message, you should set debug: false in config.yml");
+                    player.sendMessage(ChatColor.AQUA + " ");
+                    player.sendMessage(ChatColor.BLUE + "Mob world: " + world);
+                    player.sendMessage(ChatColor.BLUE + "Mob type: " + type);
+                    player.sendMessage(ChatColor.BLUE + "Mob name: " + name);
+                    player.sendMessage("§a§l------------------------------------------");
+                }
 
             }
         }
     }
 
-    @EventHandler
-    public void reload(PlayerCommandPreprocessEvent event){
-        Player player = event.getPlayer();
-        String cmd = event.getMessage();
-        if(player.isOp()){
-            if(!cmd.equalsIgnoreCase("/rewardsystem reload") && cmd.contains("rewardsystem")){
-
-                player.sendMessage("§a§l-------[REWARD SYSTEM INFORMATION]-------");
-                player.sendMessage(ChatColor.AQUA + " ");
-                player.sendMessage(ChatColor.AQUA + "/rewardsystem reload §6-> §eReload the plugin");
-                player.sendMessage(ChatColor.AQUA + " ");
-                player.sendMessage("§a§l------------------------------------------");
-
-            }
-
-
-
-            if(cmd.equalsIgnoreCase("/rewardsystem reload")){
-
-                plugin.getConfig().options().copyDefaults(true);
-                plugin.saveDefaultConfig();
-                rewardsFromConfig = getRewardsFromConfig(plugin);
-                player.sendMessage(ChatColor.AQUA + "Reward System plugin successfully reloaded");
-            }
-        }
-    }
 }
 

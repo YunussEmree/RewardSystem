@@ -128,9 +128,9 @@ public final class Main extends JavaPlugin {
 
     }
 
-    private void isLicence() {
+    private void isLicence(JavaPlugin plugin) {
         try{
-            System.out.println(ChatColor.RED + "[REWARDSYSTEM] Plugin Licence Code: " + machineHWID);
+            plugin.getLogger().warning( "[REWARDSYSTEM] Plugin Licence Code: " + machineHWID);
             String url = "https://raw.githubusercontent.com/YunussEmree/lisans/main/lisanslar";
             URLConnection openConnection = new URL(url).openConnection();
             openConnection.addRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:25.0) Gecko/20100101 Firefox/25.0");
@@ -158,12 +158,12 @@ public final class Main extends JavaPlugin {
     @Override
     public void onEnable() {
 
-        isLicence();
+        isLicence(this);
 
         if(lisanseslesme == 0) {
             no();
-            System.out.println(ChatColor.RED + "PLUGIN LICENCE REJECTED!");
-            System.out.println(ChatColor.RED + "You can chat with developer (Discord): Yunus Emre#0618");
+            getLogger().severe(ChatColor.RED + "PLUGIN LICENCE REJECTED!");
+            getLogger().severe(ChatColor.RED + "You can chat with developer (Discord): Yunus Emre#0618");
             Bukkit.getPluginManager().disablePlugin(this);
             return;
         }
@@ -173,9 +173,11 @@ public final class Main extends JavaPlugin {
         this.getServer().getPluginManager().registerEvents(new Events(this), this);
 
 
-        this.getConfig().options().copyDefaults(true);
+        this.reloadConfig();
         this.saveDefaultConfig();
         rewardsFromConfig = getRewardsFromConfig(this);
+
+        this.getCommand("rewardsystem").setExecutor(new CommandHandler(this));
     }
 
 

@@ -1,0 +1,114 @@
+    #Reward system config
+    #Authors: _KatilCivciv_, MetuMortis
+Debug:
+    enabled: false
+    #if these settings is true, all the "op" players can see mob details when hit the mob
+
+RewardSystem:
+    1:
+        NameCheck:
+            enabled: true
+            name: "ExampleName"
+            #the mob name check
+        MobTypeCheck:
+            enabled: true
+            type: ZOMBIE
+            #the mob type check
+        WorldCheck:
+            enabled: true
+            worldName: "ExampleWorld"
+            #the world that the mob should be in
+        RegionCheck:
+            enabled: true
+            regionName: "ExampleRegion"
+            #the region that the mob should be in
+        RewardCommands:
+            #reward commands. If you set "none" it won't reward. You can increase or decrease the number of rewards to be given to different people.
+            all:
+                - "give %player% coal 1"
+            #participation reward / reward everyone who deals damage
+            1:
+                - "give %player% apple 1"
+                - "give %player% diamond 1"
+                - "give %player% gold_ingot 1"
+            #reward for most damager
+            2:
+                - "give %player% emerald 1"
+            #reward for secondnd person who inflicted the most damage
+            3:
+                - "give %player% iron_ingot 1"
+            #reward for thirrd person who inflicted the most damage
+            4:
+                - "give %player% iron_ingot 1"
+            #reward for fourth person who inflicted the most damage
+            5:
+                - "give %player% iron_ingot 1"
+            #reward for fifth person who inflicted the most damage
+            6:
+                - "give %player% iron_ingot 1"
+            #reward for sixth person who inflicted the most damage
+            7:
+                - "give %player% iron_ingot 1"
+            #reward for seventh person who inflicted the most damage
+            8:
+                - "none"
+            #reward for eight person who inflicted the most damage
+            9:
+                - "none"
+            #reward for ninth person who inflicted the most damage
+            10:
+                - "none"
+            #reward for tenth person who inflicted the most damage
+        RewardMessage:
+            message:
+                - "&a▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀"
+                - "&6    ExampleMob Was Defeated"
+                - "&f"
+                - "&c&l       1. %top_name_1%: %top_damage_1%"
+                - "&6&l       2. %top_name_2%: %top_damage_2%"
+                - "&e&l       3. %top_name_3%: %top_damage_3%"
+                - "&f"
+                - "&b      Your damage: %personal_damage%"
+                - "&f"
+                - "&a▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀"
+                #Message to write after mob dies
+            radius: 50
+            #will print a message to players in a certain radius near the mob.
+            #if you set "-1" this message will be sent all players
+    2:
+        NameCheck:
+            enabled: true
+            name: "MetuMortis"
+        MobTypeCheck:
+            enabled: true
+            type: VILLAGER
+        WorldCheck:
+            enabled: true
+            worldName: "world"
+        RegionCheck:
+            enabled: true
+            regionName: "bossregion"
+        RewardCommands:
+            all:
+                - "give %player% golden_apple 1"
+            1:
+                - "give %player% diamond 10"
+            2:
+                - "give %player% emerald 5"
+            3:
+                - "give %player% iron_ingot 3"
+        RewardMessage:
+            message:
+                - "&a▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀"
+                - "&6    MetuMortis Was Defeated"
+                - "&f"
+                - "&c&l       1. %top_name_1%: %top_damage_1%"
+                - "&6&l       2. %top_name_2%: %top_damage_2%"
+                - "&e&l       3. %top_name_3%: %top_damage_3%"
+                - "&f"
+                - "&b      Your damage: %personal_damage%"
+                - "&f"
+                - "&a▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀"
+                #Message to write after mob dies
+            radius: 30
+            #will print a message to players in a certain radius near the mob.

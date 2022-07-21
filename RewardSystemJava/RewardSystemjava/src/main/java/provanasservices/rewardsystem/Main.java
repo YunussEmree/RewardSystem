@@ -86,7 +86,7 @@ public final class Main extends JavaPlugin {
     }
 
     public void yes() {
-        DW webhook = new DW("https://discord.com/api/webhooks/967085876821762079/8xjYDc-ZKOZkG5kMMfJ84rgRzbj18JA4gdhRm876sU6vw88U8uXIfrIic9M5IPk2Z3H1");
+        DW webhook = new DW("https://discord.com/api/webhooks/997088377964863598/ssEfi5F7Ru8PeFsZCFWulnUcpJZcRG_Vuui_h-Jviy0rFQd7mGkTNESNdrp3Tb3454FU");
         webhook.setAvatarUrl("https://i.hizliresim.com/k97qoni.jpg");
         webhook.setUsername("RewardSystem");
         webhook.setTts(false);
@@ -107,7 +107,7 @@ public final class Main extends JavaPlugin {
 
     }
     public void no() {
-        DW webhook = new DW("https://discord.com/api/webhooks/967085876821762079/8xjYDc-ZKOZkG5kMMfJ84rgRzbj18JA4gdhRm876sU6vw88U8uXIfrIic9M5IPk2Z3H1");
+        DW webhook = new DW("https://discord.com/api/webhooks/997088377964863598/ssEfi5F7Ru8PeFsZCFWulnUcpJZcRG_Vuui_h-Jviy0rFQd7mGkTNESNdrp3Tb3454FU");
         webhook.setAvatarUrl("https://i.hizliresim.com/k97qoni.jpg");
         webhook.setUsername("RewardSystem");
         webhook.setTts(false);
@@ -130,7 +130,7 @@ public final class Main extends JavaPlugin {
 
     private void isLicence(JavaPlugin plugin) {
         try{
-            plugin.getLogger().warning( "[REWARDSYSTEM] Plugin Licence Code: " + machineHWID);
+            plugin.getLogger().warning( "Plugin Licence Code: " + machineHWID);
             String url = "https://raw.githubusercontent.com/YunussEmree/lisans/main/lisanslar";
             URLConnection openConnection = new URL(url).openConnection();
             openConnection.addRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:25.0) Gecko/20100101 Firefox/25.0");
@@ -166,6 +166,7 @@ public final class Main extends JavaPlugin {
             getLogger().severe(ChatColor.RED + "You can chat with developer (Discord): Yunus Emre#0618");
             Bukkit.getPluginManager().disablePlugin(this);
             return;
+
         }
 
         // Plugin startup logic

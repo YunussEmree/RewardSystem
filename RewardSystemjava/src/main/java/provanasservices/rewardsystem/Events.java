@@ -42,20 +42,16 @@ public class Events implements Listener {
 
                 RewardMob reward = rewardsFromConfig.get(i);
                 if (reward.nameEquals(entity.getName()) && reward.typeEquals(entity.getType().name()) && reward.worldEquals(entity.getWorld().getName())) {
-
                     if (reward.getEnabledWorld() != null) {
                         World world = Bukkit.getWorld(reward.getEnabledWorld());
                         assert world != null;
                         if (reward.getEnabledRegion() != null) {
-
                             RegionManager regions = container.get(BukkitAdapter.adapt(world));
                             ProtectedRegion region = regions.getRegion(reward.getEnabledRegion());
                             if (region.contains(BukkitAdapter.asBlockVector(entity.getLocation()))) {
-
                                 addToDamageMap(event, player, i);
                             }
                         } else {
-                            ;
                             addToDamageMap(event, player, i);
                         }
                     } else {
@@ -176,7 +172,6 @@ public class Events implements Listener {
                                 giveRewards(i, reward);
                             }
                         } else {
-
                             giveRewards(i, reward);
                         }
                         HashMap<String, Double> selectedMap = damageMap.get(i + 1);

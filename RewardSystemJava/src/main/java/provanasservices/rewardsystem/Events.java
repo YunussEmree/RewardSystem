@@ -67,6 +67,10 @@ public class Events implements Listener {
                 for (int i = 0; i < rewardsFromConfig.size(); i++) {
 
                     RewardMob reward = rewardsFromConfig.get(i);
+                    System.out.println(reward.getName() + " " + entity.getName());
+                    System.out.println(reward.getType() + " " + entity.getType().name());
+                    System.out.println(reward.getEnabledWorld() + " " + entity.getWorld().getName());
+                    System.out.println(reward.nameEquals(entity.getName()) + " " + reward.typeEquals(entity.getType().name()) + " " + reward.worldEquals(entity.getWorld().getName()));
                     if (reward.nameEquals(entity.getName()) && reward.typeEquals(entity.getType().name()) && reward.worldEquals(entity.getWorld().getName())) {
 
                         if (reward.getEnabledWorld() != null) {
@@ -218,7 +222,6 @@ public class Events implements Listener {
         if(selectedDamage == null) selectedDamage = 0.0;
         selectedDamage += event.getDamage();
         selectedDamageMap.put(player.getName(), selectedDamage);
-        selectedDamageMap.put("Deneme", 5.0);
     }
 
     private static String replacePlaceholders(String string, String playerName,  HashMap<String, Double> map){

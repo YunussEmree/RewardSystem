@@ -32,16 +32,18 @@ public final class Main extends JavaPlugin {
         for(String s : plugin.getConfig().getKeys(true).stream().filter(el -> el.matches("^RewardSystem\\.[0-9]+$")).toArray(String[]::new)){
             RewardMob reward = new RewardMob();
             if(plugin.getConfig().getBoolean(s+".NameCheck.enabled", false)){
-                reward.setName(plugin.getConfig().getString(s+".NameCheck.name",  null));
+                reward.setName(translateColors(plugin.getConfig().getString(s+".NameCheck.name",  null)));
             }
             if(plugin.getConfig().getBoolean(s+".MobTypeCheck.enabled", false)){
                 reward.setType(plugin.getConfig().getString(s+".MobTypeCheck.type", null));
             }
             if(plugin.getConfig().getBoolean(s+".WorldCheck.enabled", false)){
-                reward.setEnabledWorld(plugin.getConfig().getString(s+".WorldCheck.worldName", null));
+                System.out.println(plugin.getConfig().getString(s+".WorldCheck.enabled", null));
+                reward.setEnabledWorld(plugin.getConfig().getString(s+".WorldCheck.worldname", null));
+
             }
             if(plugin.getConfig().getBoolean(s+".RegionCheck.enabled", false)){
-                reward.setEnabledRegion(plugin.getConfig().getString(s+".RegionCheck.regionName", null));
+                reward.setEnabledRegion(plugin.getConfig().getString(s+".RegionCheck.regionname", null));
             }
             reward.setRewardMessages(new ArrayList<String>(plugin.getConfig().getStringList(s+".RewardMessage.message")));
             reward.setRadius(plugin.getConfig().getInt(s+".RewardMessage.radius", -1));

@@ -1,1 +1,3 @@
 RewardSystemjava/target/*
+*.class
+*.jar

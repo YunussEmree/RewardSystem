@@ -237,18 +237,19 @@ public class Events implements Listener {
                 newStr = newStr.replace(matcher.group(), entries.get(index).getKey());
             }
         }
+        newStr = newStr.replaceAll("%top_name_(\\d+)%", "No one");
         pattern = Pattern.compile("%top_damage_(\\d+)%");
         matcher = pattern.matcher(newStr);
         while(matcher.find()){
             System.out.println(matcher.group(1));
             int index = Integer.parseInt(matcher.group(1))-1;
             if(index < entries.size()){
-                newStr = newStr.replace(matcher.group(), entries.get(index).getValue().toString());
+                newStr = newStr.replace(matcher.group(), String.valueOf(Math.round(entries.get(index).getValue())));
             }
         }
-
-
+        newStr = newStr.replaceAll("%top_damage_(\\d+)%", "0");
         newStr = newStr.replace("%personal_damage%", String.valueOf(map.get(playerName)) != null ? String.valueOf(Math.round(map.get(playerName))) : "0");
+
         return newStr;
     }
 

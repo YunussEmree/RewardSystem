@@ -1,0 +1,10 @@
+name: RewardSystem
+version: 1.0.0
+main: provanasservices.rewardsystem.Main
+api-version: 1.16
+log_prefix: REWARDSYSTEM
+commands:
+  rewardsystem:
+    description: Main command
+    usage: /<command>
+    permission: op

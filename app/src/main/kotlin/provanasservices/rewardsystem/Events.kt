@@ -13,6 +13,7 @@ import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.entity.EntityDeathEvent
+import provanasservices.rewardsystem.Main.Companion.translateColors
 import java.util.function.Consumer
 import java.util.regex.Pattern
 import kotlin.math.roundToInt
@@ -97,6 +98,9 @@ class Events(private var plugin: Main) : Listener {
                     giveRewards(i, reward)
                 }
                 val selectedMap = Main.damageMap[i + 1]!!
+                if(selectedMap.isEmpty()){
+                    plugin.logger.info(translateColors("&cNot giving rewards because no players have damaged the ${entity.name}."))
+                }
                 if (reward.radius == -1 && selectedMap.isNotEmpty()) {
                     if(selectedMap.isEmpty()) return
                     reward.rewardMessages!!.forEach { message: String ->

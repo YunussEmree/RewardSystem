@@ -130,7 +130,6 @@ class Main : JavaPlugin() {
                     reward.type = plugin.config.getString("$s.MobTypeCheck.type", null)
                 }
                 if (plugin.config.getBoolean("$s.WorldCheck.enabled", false)) {
-                    println(plugin.config.getString("$s.WorldCheck.enabled", null))
                     reward.enabledWorld = plugin.config.getString("$s.WorldCheck.worldname", null)
                 }
                 if (plugin.config.getBoolean("$s.RegionCheck.enabled", false)) {

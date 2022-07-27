@@ -97,32 +97,27 @@ class Events(private var plugin: Main) : Listener {
                     giveRewards(i, reward)
                 }
                 val selectedMap = Main.damageMap[i + 1]!!
-                if (reward.radius == -1) {
-                    reward.rewardMessages!!.forEach(Consumer { message: String ->
+                if (reward.radius == -1 && selectedMap.isNotEmpty()) {
+                    if(selectedMap.isEmpty()) return
+                    reward.rewardMessages!!.forEach { message: String ->
                         Bukkit.getOnlinePlayers().forEach { onlinePlayer: Player ->
                             onlinePlayer.sendMessage(
                                 Main.translateColors(replacePlaceholders(message, player!!.name, selectedMap))
                             )
                         }
-                    })
+                    }
                 } else {
-                    entity.getNearbyEntities(
-                        reward.radius.toDouble(),
-                        reward.radius.toDouble(),
-                        reward.radius.toDouble()
-                    ).forEach(
-                        Consumer { e: Entity ->
-                            if (e is Player) {
-                                val p: Player = e
-                                reward.rewardMessages!!.forEach(Consumer { message: String ->
-                                    p.sendMessage(
-                                        Main.translateColors(
-                                            replacePlaceholders(message, player!!.name, selectedMap)
-                                        )
-                                    )
-                                })
+                    val nearPlayers = entity.getNearbyEntities(reward.radius.toDouble(), reward.radius.toDouble(), reward.radius.toDouble()).filterIsInstance<Player>()
+                    if(nearPlayers.isNotEmpty() && selectedMap.isNotEmpty()) {
+                        reward.rewardMessages!!.forEach { message: String ->
+                            nearPlayers.forEach { onlinePlayer: Player ->
+
+                                onlinePlayer.sendMessage(
+                                    Main.translateColors(replacePlaceholders(message, player!!.name, selectedMap))
+                                )
                             }
-                        })
+                        }
+                    }
                 }
                 Main.damageMap[i + 1]!!.clear()
             }

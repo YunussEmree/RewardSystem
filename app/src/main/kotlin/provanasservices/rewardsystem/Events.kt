@@ -10,6 +10,7 @@ import org.bukkit.Bukkit
 import org.bukkit.World
 import org.bukkit.entity.*
 import org.bukkit.event.EventHandler
+import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.entity.EntityDeathEvent
@@ -19,7 +20,7 @@ import java.util.regex.Pattern
 import kotlin.math.roundToInt
 
 class Events(private var plugin: Main) : Listener {
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGHEST)
     fun onDamage(event: EntityDamageByEntityEvent) {
         val entity: Entity = event.entity
         val damager: Entity = event.damager
@@ -106,7 +107,7 @@ class Events(private var plugin: Main) : Listener {
                     reward.rewardMessages!!.forEach { message: String ->
                         Bukkit.getOnlinePlayers().forEach { onlinePlayer: Player ->
                             onlinePlayer.sendMessage(
-                                Main.translateColors(replacePlaceholders(message, player!!.name, selectedMap))
+                                translateColors(replacePlaceholders(message, player!!.name, selectedMap))
                             )
                         }
                     }
@@ -117,7 +118,7 @@ class Events(private var plugin: Main) : Listener {
                             nearPlayers.forEach { onlinePlayer: Player ->
 
                                 onlinePlayer.sendMessage(
-                                    Main.translateColors(replacePlaceholders(message, player!!.name, selectedMap))
+                                    translateColors(replacePlaceholders(message, player!!.name, selectedMap))
                                 )
                             }
                         }
@@ -158,9 +159,10 @@ class Events(private var plugin: Main) : Listener {
         val selectedDamageMap = Main.damageMap[i + 1]!!
         var selectedDamage = selectedDamageMap[player.name]
         if (selectedDamage == null) selectedDamage = 0.0
-        selectedDamage += event.damage
+        selectedDamage += event.finalDamage
         selectedDamageMap[player.name] = selectedDamage
     }
+
 
     @EventHandler
     fun debug(event: EntityDamageByEntityEvent) {

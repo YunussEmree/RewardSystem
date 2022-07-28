@@ -15,9 +15,13 @@ import org.bukkit.event.Listener
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.entity.EntityDeathEvent
 import provanasservices.rewardsystem.Main.Companion.translateColors
+import java.util.*
 import java.util.function.Consumer
 import java.util.regex.Pattern
+import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
 import kotlin.math.roundToInt
+import kotlin.random.Random
 
 class Events(private var plugin: Main) : Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -140,6 +144,7 @@ class Events(private var plugin: Main) : Listener {
         for (index in 0 until selectedDamageMap.size) {
             val rewardIndex = index + 1
             val (key, value) = entrySet[index]
+
             reward.allRewards!!.forEach(Consumer { allReward: String ->
                 Bukkit.dispatchCommand(
                     Bukkit.getConsoleSender(),
@@ -152,6 +157,19 @@ class Events(private var plugin: Main) : Listener {
                     rewardString.replace("%player%", key).replace("%damage%", value.toString())
                 )
             })
+            reward.chanceRewards.entries.forEach { (chanceRewards, chance) ->
+                val random = Random.nextInt(100)
+                if(random <= chance){
+                    chanceRewards.forEach { chanceReward: String ->
+                        Bukkit.dispatchCommand(
+                            Bukkit.getConsoleSender(),
+                            chanceReward.replace("%player%", key).replace("%damage%", value.toString())
+                        )
+                    }
+                }
+
+            }
+            TODO("Şansa bağlı ödüller test edilecek")
         }
     }
 

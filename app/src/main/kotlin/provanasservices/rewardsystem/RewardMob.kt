@@ -9,6 +9,7 @@ class RewardMob {
     var enabledRegion: String? = null
     var allRewards: ArrayList<String>? = null
     var rewards = HashMap<Int, ArrayList<String>>()
+    var chanceRewards = HashMap<ArrayList<String>, Int>()
     fun nameEquals(name: String): Boolean {
         return if (this.name == null) true else this.name == name
     }

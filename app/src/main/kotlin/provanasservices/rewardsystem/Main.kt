@@ -145,6 +145,13 @@ class Main : JavaPlugin() {
                     reward.rewards[i] = rewardPath
                     i++
                 }
+                i = 1
+                while (plugin.config.contains("$s.ChanceRewards.$i")){
+                    val chance = plugin.config.getInt("$s.ChanceRewards.$i.chance", 0)
+                    val rewardPath = ArrayList(plugin.config.getStringList("$s.ChanceRewards.$i.commands"))
+                    reward.chanceRewards[rewardPath] = chance
+                    i++
+                }
                 damageMap[s.replace("[^0-9]".toRegex(), "").toInt()] = HashMap()
                 rewards.add(reward)
             }

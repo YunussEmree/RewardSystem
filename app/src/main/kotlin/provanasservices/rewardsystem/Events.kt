@@ -157,6 +157,7 @@ class Events(private var plugin: Main) : Listener {
                     rewardString.replace("%player%", key).replace("%damage%", value.toString())
                 )
             })
+            /*
             reward.chanceRewards.entries.forEach { (chanceRewards, chance) ->
                 val random = Random.nextInt(100)
                 if(random <= chance){
@@ -170,6 +171,7 @@ class Events(private var plugin: Main) : Listener {
 
             }
             TODO("Şansa bağlı ödüller test edilecek")
+            */
         }
     }
 

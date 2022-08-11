@@ -4,6 +4,9 @@ Debug:
     enabled: false
     #if these settings is true, all the "op" players can see mob details when hit the mob
 
+NoPlayer: "No one"
+#if there is no damager this text will be use
+
 RewardSystem:
     1:
         NameCheck:
@@ -25,7 +28,7 @@ RewardSystem:
         RewardCommands:
             #reward commands. If you set "none" it won't reward. You can increase or decrease the number of rewards to be given to different people.
             all:
-                - "give %player% coal 1"
+                - ["give %player% coal 1", "%100"]
             #participation reward / reward everyone who deals damage
             1:
                 - "give %player% apple 1"

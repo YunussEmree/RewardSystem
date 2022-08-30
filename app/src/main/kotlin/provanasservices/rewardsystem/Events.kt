@@ -170,6 +170,7 @@ class Events(private var plugin: Main) : Listener {
                 }
 
             }
+            TODO("Şansa bağlı ödüller test edilecek")
             */
         }
     }

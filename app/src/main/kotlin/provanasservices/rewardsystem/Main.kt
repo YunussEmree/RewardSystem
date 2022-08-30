@@ -153,7 +153,7 @@ class Main : JavaPlugin() {
                     reward.chanceRewards[rewardPath] = chance!!.replace("%", "").toInt()
                     i++
                 }
-                 */
+                */
                 damageMap[s.replace("[^0-9]".toRegex(), "").toInt()] = HashMap()
                 rewards.add(reward)
             }

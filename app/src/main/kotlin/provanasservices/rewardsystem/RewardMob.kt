@@ -2,14 +2,14 @@ package provanasservices.rewardsystem
 
 class RewardMob {
     var radius = -1
-    var rewardMessages: ArrayList<String>? = null
+    var rewardMessages: List<String>? = null
     var name: String? = null
     var type: String? = null
     var enabledWorld: String? = null
     var enabledRegion: String? = null
-    var allRewards: ArrayList<String>? = null
-    var rewards = HashMap<Int, ArrayList<String>>()
-    var chanceRewards = HashMap<ArrayList<String>, Int>()
+    var allRewards: List<String>? = null
+    var rewards = HashMap<Int, List<String>>()
+    val chanceRewards = HashMap<Int, List<ChanceReward>>()
     fun nameEquals(name: String): Boolean {
         return if (this.name == null) true else this.name == name
     }
@@ -22,7 +22,5 @@ class RewardMob {
         return if (enabledWorld == null) true else enabledWorld == world
     }
 
-    fun regionEquals(region: String): Boolean {
-        return if (enabledRegion == null) true else enabledRegion == region
-    }
+    data class ChanceReward(val chance: Int, val commands: String)
 }

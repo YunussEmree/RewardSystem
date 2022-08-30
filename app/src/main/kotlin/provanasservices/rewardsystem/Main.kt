@@ -142,7 +142,18 @@ class Main : JavaPlugin() {
                 var i = 1
                 while (plugin.config.contains("$rewardPaths.$i")) {
                     val rewardPath = ArrayList(plugin.config.getStringList("$rewardPaths.$i"))
-                    reward.rewards[i] = rewardPath
+
+                    val (chanceRewards, definiteRewards) = rewardPath.partition { it.endsWith("%") }
+
+                    reward.rewards[i] = definiteRewards
+
+                    val filteredChanceRewards = chanceRewards.filter { it.split(" ").last().replace("%", "").toIntOrNull() != null }
+                    val mappedChanceRewards = filteredChanceRewards.map {
+                        val chance = it.split(" ").last().replace("%", "").toInt()
+                        val command = it.replace(" $chance%", "")
+                        RewardMob.ChanceReward(chance, command)
+                    }
+                    reward.chanceRewards[i] = mappedChanceRewards
                     i++
                 }
                 /*

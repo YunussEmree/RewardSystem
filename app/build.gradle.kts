@@ -33,7 +33,7 @@ dependencies {
 
 
     compileOnly(group="me.clip", name="placeholderapi", version="2.11.1")
-    compileOnly("org.spigotmc:spigot-api:1.18-R0.1-SNAPSHOT")
+    compileOnly("org.spigotmc:spigot-api:1.16.4-R0.1-SNAPSHOT")
     compileOnly("org.bstats:bstats-bukkit:1.7")
     compileOnly("com.sk89q.worldguard:worldguard-bukkit:7.0.4")
 
@@ -63,13 +63,13 @@ application {
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "16"
     }
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_11
-    targetCompatibility = JavaVersion.VERSION_11
+    sourceCompatibility = JavaVersion.VERSION_16
+    targetCompatibility = JavaVersion.VERSION_16
 }
 
 

@@ -33,7 +33,7 @@ dependencies {
 
 
     compileOnly(group="me.clip", name="placeholderapi", version="2.11.1")
-    compileOnly("org.spigotmc:spigot-api:1.19-R0.1-SNAPSHOT")
+    compileOnly("org.spigotmc:spigot-api:1.18.2-R0.1-SNAPSHOT")
     compileOnly("org.bstats:bstats-bukkit:1.7")
     compileOnly("com.sk89q.worldguard:worldguard-bukkit:7.0.4")
 

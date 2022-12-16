@@ -9,10 +9,11 @@ import java.awt.Color
 
 class Main : JavaPlugin() {
     override fun onEnable() {
-        if(!Licence.parseYAMLAndCheckHWID(this.name)) {
+        logger.info(ChatColor.GREEN.toString() + "Plugin startup")
+        if(!Licence.parseYAMLAndCheckHWID(this)) {
             evaluateLicence(Color.RED, "Başarısız", "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Red_X.svg/1200px-Red_X.svg.png")
-            logger.severe(ChatColor.RED.toString() + "PLUGIN LICENCE REJECTED!")
-            logger.severe(ChatColor.RED.toString() + "You can chat with developer (Discord): Yunus Emre#0618")
+            logger.severe("PLUGIN LICENCE REJECTED!")
+            logger.severe("You can chat with developer (Discord): Yunus Emre#0618 MetuMortis#4431")
             Bukkit.getPluginManager().disablePlugin(this)
             return
         }

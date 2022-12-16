@@ -1,5 +1,6 @@
 package provanasservices.rewardsystem
 
+import org.bukkit.plugin.java.JavaPlugin
 import org.yaml.snakeyaml.Yaml
 import provanasservices.rewardsystem.licence.DW
 import java.awt.Color
@@ -41,11 +42,12 @@ class Licence {
             return response.body()
         }
 
-        fun parseYAMLAndCheckHWID(pluginName: String): Boolean {
+        fun parseYAMLAndCheckHWID(plugin: JavaPlugin): Boolean {
+            plugin.logger.warning("Plugin Licence Code: $HWID")
             val YAMLString = getContentFromGithub()
             val parsedYAML = Yaml().load<Map<String, ArrayList<LinkedHashMap<String,String>>>>(YAMLString)
-            for(i in 0 .. parsedYAML[pluginName]!!.size) {
-                if(parsedYAML[pluginName]!![i]["hwid"] == HWID) {
+            for(i in 0 until  parsedYAML[plugin.name]!!.size) {
+                if(parsedYAML[plugin.name]!![i]["hwid"] == HWID) {
                     return true
                 }
             }

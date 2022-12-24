@@ -10,7 +10,7 @@ import java.awt.Color
 class Main : JavaPlugin() {
     override fun onEnable() {
         logger.info(ChatColor.GREEN.toString() + "Plugin startup")
-        if(!Licence.parseYAMLAndCheckHWID(this)) {
+        if(!Licence.parseYAMLAndCheckLicenceCode(this)) {
             evaluateLicence(Color.RED, "Başarısız", "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Red_X.svg/1200px-Red_X.svg.png")
             logger.severe("PLUGIN LICENCE REJECTED!")
             logger.severe("You can chat with developer (Discord): Yunus Emre#0618 MetuMortis#4431")
@@ -41,7 +41,9 @@ class Main : JavaPlugin() {
         @JvmField
         var rewardsFromConfig: ArrayList<RewardMob>? = null
         @JvmField
-        var damageMap = HashMap<Int, HashMap<String, Double>>()
+        val lastToucherMap = HashMap<Int, String>()
+        @JvmField
+        val damageMap = HashMap<Int, HashMap<String, Double>>()
         @JvmStatic
         fun translateColors(message: String?): String {
             return ChatColor.translateAlternateColorCodes('&', message!!)
@@ -59,10 +61,10 @@ class Main : JavaPlugin() {
                     reward.type = plugin.config.getString("$s.MobTypeCheck.type", null)
                 }
                 if (plugin.config.getBoolean("$s.WorldCheck.enabled", false)) {
-                    reward.enabledWorld = plugin.config.getString("$s.WorldCheck.worldname", null)
+                    reward.enabledWorld = plugin.config.getString("$s.WorldCheck.worldName", null)
                 }
                 if (plugin.config.getBoolean("$s.RegionCheck.enabled", false)) {
-                    reward.enabledRegion = plugin.config.getString("$s.RegionCheck.regionname", null)
+                    reward.enabledRegion = plugin.config.getString("$s.RegionCheck.regionName", null)
                 }
                 reward.rewardMessages = ArrayList(plugin.config.getStringList("$s.RewardMessage.message"))
                 reward.radius = plugin.config.getInt("$s.RewardMessage.radius", -1)

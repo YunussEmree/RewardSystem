@@ -1,9 +1,9 @@
     #Reward system config
     #Authors: _KatilCivciv_, MetuMortis
+no_one: "No one"
 Debug:
     enabled: false
     #if these settings is true, all the "op" players can see mob details when hit the mob
-
 RewardSystem:
     1:
         NameCheck:

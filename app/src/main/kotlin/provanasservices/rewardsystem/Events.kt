@@ -14,6 +14,7 @@ import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.entity.EntityDeathEvent
+import provanasservices.rewardsystem.Main.Companion.lastToucherMap
 import provanasservices.rewardsystem.Main.Companion.translateColors
 import java.util.function.Consumer
 import java.util.regex.Pattern
@@ -102,6 +103,7 @@ class Events(private var plugin: Main) : Listener {
                     giveRewards(i, reward)
                 }
                 val selectedMap = Main.damageMap[i + 1]!!
+                val finalDamager = Main.lastToucherMap[i + 1] ?: plugin.config.getString("no_one")!!
                 if(selectedMap.isEmpty()){
                     plugin.logger.info(translateColors("&cNot giving rewards because no players have damaged the ${entity.name}."))
                 }
@@ -110,7 +112,7 @@ class Events(private var plugin: Main) : Listener {
                     reward.rewardMessages!!.forEach { message: String ->
                         Bukkit.getOnlinePlayers().forEach { onlinePlayer: Player ->
                             onlinePlayer.sendMessage(
-                                translateColors(replacePlaceholders(message, player!!.name, selectedMap))
+                                translateColors(replacePlaceholders(message, player!!.name, selectedMap, finalDamager, plugin.config.getString("no_one")!!))
                             )
                         }
                     }
@@ -121,7 +123,7 @@ class Events(private var plugin: Main) : Listener {
                             nearPlayers.forEach { onlinePlayer: Player ->
 
                                 onlinePlayer.sendMessage(
-                                    translateColors(replacePlaceholders(message, player!!.name, selectedMap))
+                                    translateColors(replacePlaceholders(message, player!!.name, selectedMap, finalDamager, plugin.config.getString("no_one")!!))
                                 )
                             }
                         }
@@ -144,19 +146,19 @@ class Events(private var plugin: Main) : Listener {
             val rewardIndex = index + 1
             val (key, value) = entrySet[index]
 
-            reward.allRewards!!.forEach(Consumer { allReward: String ->
+            reward.allRewards?.forEach(Consumer { allReward: String ->
                 Bukkit.dispatchCommand(
                     Bukkit.getConsoleSender(),
                     allReward.replace("%player%", key).replace("%damage%", value.toString())
                 )
             })
-            reward.rewards[rewardIndex]!!.forEach(Consumer { rewardString: String ->
+            reward.rewards[rewardIndex]?.forEach(Consumer { rewardString: String ->
                 Bukkit.dispatchCommand(
                     Bukkit.getConsoleSender(),
                     rewardString.replace("%player%", key).replace("%damage%", value.toString())
                 )
             })
-            reward.chanceRewards[rewardIndex]!!.forEach { (chance, rewardString) ->
+            reward.chanceRewards[rewardIndex]?.forEach { (chance, rewardString) ->
                 val random = Random.nextInt(100)
                 if(random <= chance){
                     Bukkit.dispatchCommand(
@@ -189,6 +191,9 @@ class Events(private var plugin: Main) : Listener {
         if (selectedDamage == null) selectedDamage = 0.0
         selectedDamage += event.finalDamage
         selectedDamageMap[player.name] = selectedDamage
+        if(event.entity is Mob){
+            if((event.entity as Mob).health - event.finalDamage < 0) lastToucherMap[i+1] = player.name
+        }
     }
 
 
@@ -217,7 +222,20 @@ class Events(private var plugin: Main) : Listener {
     }
 
     companion object {
-        private fun replacePlaceholders(string: String, playerName: String, map: HashMap<String, Double>): String {
+        fun String?.translateColors(): String {
+            if(this == null) return ""
+            var parsedStr: String = this
+            parsedStr = this.replace("\\{(#[0-9A-f]{6})\\}".toRegex(), "&$1")
+            if("&#[0-9A-f]{6}".toRegex().containsMatchIn(parsedStr)){
+                for (x in "&(#[0-9A-f]{6})".toRegex().findAll(parsedStr)){
+                    parsedStr = parsedStr.replaceFirst(x.value.toRegex(),ChatColor.of(x.value.slice(
+                        1 until x.value.length
+                    )).toString())
+                }
+            }
+            return ChatColor.translateAlternateColorCodes('&', parsedStr)
+        }
+        private fun replacePlaceholders(string: String, playerName: String, map: HashMap<String, Double>, finalDamager: String, noOne: String = "No one"): String {
             val entries = ArrayList<Map.Entry<String, Double>>(map.entries)
             entries.sortWith { (_, value): Map.Entry<String?, Double>, (_, value1): Map.Entry<String?, Double> ->
                 value1.compareTo(
@@ -233,7 +251,7 @@ class Events(private var plugin: Main) : Listener {
                     newStr = newStr.replace(matcher.group(), entries[index].key)
                 }
             }
-            newStr = newStr.replace("%top_name_(\\d+)%".toRegex(), "No one")
+            newStr = newStr.replace("%top_name_(\\d+)%".toRegex(), noOne)
             pattern = Pattern.compile("%top_damage_(\\d+)%")
             matcher = pattern.matcher(newStr)
             while (matcher.find()) {
@@ -246,6 +264,7 @@ class Events(private var plugin: Main) : Listener {
             newStr = newStr.replace(
                 "%personal_damage%", if (map[playerName]?.toString() != null) (map[playerName]!!).roundToInt().toString() else "0"
             )
+            newStr = newStr.replace("%final_damager%", finalDamager)
             return newStr
         }
     }

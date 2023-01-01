@@ -112,7 +112,7 @@ class Events(private var plugin: Main) : Listener {
                     reward.rewardMessages!!.forEach { message: String ->
                         Bukkit.getOnlinePlayers().forEach { onlinePlayer: Player ->
                             onlinePlayer.sendMessage(
-                                translateColors(replacePlaceholders(message, player!!.name, selectedMap, finalDamager, plugin.config.getString("no_one")!!))
+                                translateColors(replacePlaceholders(message, onlinePlayer.name, selectedMap, finalDamager, plugin.config.getString("no_one")!!))
                             )
                         }
                     }
@@ -123,7 +123,7 @@ class Events(private var plugin: Main) : Listener {
                             nearPlayers.forEach { onlinePlayer: Player ->
 
                                 onlinePlayer.sendMessage(
-                                    translateColors(replacePlaceholders(message, player!!.name, selectedMap, finalDamager, plugin.config.getString("no_one")!!))
+                                    translateColors(replacePlaceholders(message, onlinePlayer.name, selectedMap, finalDamager, plugin.config.getString("no_one")!!))
                                 )
                             }
                         }
@@ -262,7 +262,7 @@ class Events(private var plugin: Main) : Listener {
             }
             newStr = newStr.replace("%top_damage_(\\d+)%".toRegex(), "0")
             newStr = newStr.replace(
-                "%personal_damage%", if (map[playerName]?.toString() != null) (map[playerName]!!).roundToInt().toString() else "0"
+                "%personal_damage%", (map[playerName]?.roundToInt() ?: 0).toString()
             )
             newStr = newStr.replace("%final_damager%", finalDamager)
             return newStr

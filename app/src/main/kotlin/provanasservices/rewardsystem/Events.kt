@@ -136,6 +136,7 @@ class Events(private var plugin: Main) : Listener {
 
     private fun giveRewards(i: Int, reward: RewardMob) {
         val selectedDamageMap = Main.damageMap[i + 1]!!
+        Bukkit.getServer().pluginManager.callEvent(RewardSystemMobDieEvent(selectedDamageMap, i+1))
         val entrySet = ArrayList<Map.Entry<String, Double>>(selectedDamageMap.entries)
         entrySet.sortWith { (_, value): Map.Entry<String?, Double>, (_, value1): Map.Entry<String?, Double> ->
             value1.compareTo(

@@ -83,7 +83,7 @@ class Events(private var plugin: Main) : Listener {
     @EventHandler
     fun onDeath(event: EntityDeathEvent) {
         val entity: Entity = event.entity
-        val player: Player? = event.entity.killer
+        //val player: Player? = event.entity.killer
         for (i in Main.rewardsFromConfig!!.indices) {
             val reward = Main.rewardsFromConfig!![i]
             if (reward.nameEquals(entity.name) && reward.typeEquals(entity.type.name) && reward.worldEquals(entity.world.name)) {
@@ -153,6 +153,15 @@ class Events(private var plugin: Main) : Listener {
                     allReward.replace("%player%", key).replace("%damage%", value.toString())
                 )
             })
+            reward.allChanceRewards.forEach { (chance, allChanceReward) ->
+                val random = Random.nextInt(100)
+                if(random <= chance){
+                    Bukkit.dispatchCommand(
+                        Bukkit.getConsoleSender(),
+                        allChanceReward.replace("%player%", key).replace("%damage%", value.toString())
+                    )
+                }
+            }
             reward.rewards[rewardIndex]?.forEach(Consumer { rewardString: String ->
                 Bukkit.dispatchCommand(
                     Bukkit.getConsoleSender(),
@@ -226,7 +235,7 @@ class Events(private var plugin: Main) : Listener {
         fun String?.translateColors(): String {
             if(this == null) return ""
             var parsedStr: String = this
-            parsedStr = this.replace("\\{(#[0-9A-f]{6})\\}".toRegex(), "&$1")
+            parsedStr = this.replace("""\{(#[0-9A-f]{6})\}""".toRegex(), "&$1")
             if("&#[0-9A-f]{6}".toRegex().containsMatchIn(parsedStr)){
                 for (x in "&(#[0-9A-f]{6})".toRegex().findAll(parsedStr)){
                     parsedStr = parsedStr.replaceFirst(x.value.toRegex(),ChatColor.of(x.value.slice(

@@ -10,6 +10,7 @@ class RewardMob {
     var allRewards: List<String>? = null
     var rewards = HashMap<Int, List<String>>()
     val chanceRewards = HashMap<Int, List<ChanceReward>>()
+    var allChanceRewards = ArrayList<ChanceReward>()
     fun nameEquals(name: String): Boolean {
         return if (this.name == null) true else this.name == name
     }

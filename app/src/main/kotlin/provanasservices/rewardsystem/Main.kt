@@ -69,7 +69,15 @@ class Main : JavaPlugin() {
                 reward.rewardMessages = ArrayList(plugin.config.getStringList("$s.RewardMessage.message"))
                 reward.radius = plugin.config.getInt("$s.RewardMessage.radius", -1)
                 val rewardPaths = "$s.RewardCommands"
-                reward.allRewards = ArrayList(plugin.config.getStringList("$rewardPaths.all"))
+                val (chanceRewardsToAll, definiteRewardsToAll) = plugin.config.getStringList("$rewardPaths.all").partition { it.endsWith("%") }
+                reward.allRewards = definiteRewardsToAll
+                val filteredChanceRewardsToAll = chanceRewardsToAll.filter { it.split(" ").last().replace("%", "").toIntOrNull() != null }
+                val mappedChanceRewardsToAll = filteredChanceRewardsToAll.map {
+                    val chance = it.split(" ").last().replace("%", "").toInt()
+                    val command = it.replace(" $chance%", "")
+                    RewardMob.ChanceReward(chance, command)
+                }
+                reward.allChanceRewards = ArrayList(mappedChanceRewardsToAll)
                 var i = 1
                 while (plugin.config.contains("$rewardPaths.$i")) {
                     val rewardPath = ArrayList(plugin.config.getStringList("$rewardPaths.$i"))

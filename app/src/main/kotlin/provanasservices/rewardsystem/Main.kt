@@ -6,6 +6,7 @@ import org.bukkit.plugin.Plugin
 import org.bukkit.plugin.java.JavaPlugin
 import provanasservices.rewardsystem.Licence.Companion.evaluateLicence
 import java.awt.Color
+import java.util.UUID
 
 class Main : JavaPlugin() {
     override fun onEnable() {
@@ -41,9 +42,11 @@ class Main : JavaPlugin() {
         @JvmField
         var rewardsFromConfig: ArrayList<RewardMob>? = null
         @JvmField
-        val lastToucherMap = HashMap<Int, String>()
+        val lastToucherMap = HashMap<UUID, String>()
         @JvmField
-        val damageMap = HashMap<Int, HashMap<String, Double>>()
+        var damageMap = HashMap<UUID, HashMap<String, Double>>()
+        @JvmField
+        val uuidMap = HashMap<Int, HashSet<UUID>>()
         @JvmStatic
         fun translateColors(message: String?): String {
             return ChatColor.translateAlternateColorCodes('&', message!!)
@@ -104,7 +107,7 @@ class Main : JavaPlugin() {
                     i++
                 }
                 */
-                damageMap[s.replace("[^0-9]".toRegex(), "").toInt()] = HashMap()
+                uuidMap[s.replace("[^0-9]".toRegex(), "").toInt()] = HashSet()
                 rewards.add(reward)
             }
             return rewards

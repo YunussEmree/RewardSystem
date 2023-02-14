@@ -14,8 +14,11 @@ import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.entity.EntityDeathEvent
+import provanasservices.rewardsystem.Main.Companion.damageMap
 import provanasservices.rewardsystem.Main.Companion.lastToucherMap
 import provanasservices.rewardsystem.Main.Companion.translateColors
+import provanasservices.rewardsystem.Main.Companion.uuidMap
+import java.util.*
 import java.util.function.Consumer
 import java.util.regex.Pattern
 import kotlin.collections.ArrayList
@@ -24,7 +27,7 @@ import kotlin.math.roundToInt
 import kotlin.random.Random
 
 class Events(private var plugin: Main) : Listener {
-    @EventHandler(priority = EventPriority.HIGHEST)
+    @EventHandler(priority = EventPriority.MONITOR)
     fun onDamage(event: EntityDamageByEntityEvent) {
         val entity: Entity = event.entity
         val damager: Entity = event.damager
@@ -65,12 +68,15 @@ class Events(private var plugin: Main) : Listener {
                             val regions: RegionManager? = container.get(BukkitAdapter.adapt(world))
                             val region: ProtectedRegion? = regions!!.getRegion(reward.enabledRegion)
                             if (region!!.contains(BukkitAdapter.asBlockVector(entity.location))) {
+                                uuidMap[i+1]!!.add(event.entity.uniqueId)
                                 addToDamageMap(event, player, i)
                             }
                         } else {
+                            uuidMap[i+1]!!.add(event.entity.uniqueId)
                             addToDamageMap(event, player, i)
                         }
                     } else {
+                        uuidMap[i+1]!!.add(event.entity.uniqueId)
                         addToDamageMap(event, player, i)
                     }
                 }
@@ -94,16 +100,16 @@ class Events(private var plugin: Main) : Listener {
                         val regions: RegionManager? = container.get(BukkitAdapter.adapt(world))
                         val region: ProtectedRegion? = regions?.getRegion(reward.enabledRegion)
                         if (region!!.contains(BukkitAdapter.asBlockVector(entity.location))) {
-                            giveRewards(i, reward)
+                            giveRewards(i, entity.uniqueId, reward)
                         }
                     } else {
-                        giveRewards(i, reward)
+                        giveRewards(i, entity.uniqueId, reward)
                     }
                 } else {
-                    giveRewards(i, reward)
+                    giveRewards(i, entity.uniqueId, reward)
                 }
-                val selectedMap = Main.damageMap[i + 1]!!
-                val finalDamager = Main.lastToucherMap[i + 1] ?: plugin.config.getString("no_one")!!
+                val selectedMap = Main.damageMap[event.entity.uniqueId]!!
+                val finalDamager = Main.lastToucherMap[event.entity.uniqueId] ?: plugin.config.getString("no_one")!!
                 if(selectedMap.isEmpty()){
                     plugin.logger.info(translateColors("&cNot giving rewards because no players have damaged the ${entity.name}."))
                 }
@@ -129,13 +135,13 @@ class Events(private var plugin: Main) : Listener {
                         }
                     }
                 }
-                Main.damageMap[i + 1]!!.clear()
+                Main.damageMap[event.entity.uniqueId]!!.clear()
             }
         }
     }
 
-    private fun giveRewards(i: Int, reward: RewardMob) {
-        val selectedDamageMap = Main.damageMap[i + 1]!!
+    private fun giveRewards(i: Int, uuid: UUID, reward: RewardMob) {
+        var selectedDamageMap = Main.damageMap[uuid] ?: return
         Bukkit.getServer().pluginManager.callEvent(RewardSystemMobDieEvent(selectedDamageMap, i+1))
         val entrySet = ArrayList<Map.Entry<String, Double>>(selectedDamageMap.entries)
         entrySet.sortWith { (_, value): Map.Entry<String?, Double>, (_, value1): Map.Entry<String?, Double> ->
@@ -196,13 +202,15 @@ class Events(private var plugin: Main) : Listener {
     }
 
     private fun addToDamageMap(event: EntityDamageByEntityEvent, player: Player, i: Int) {
-        val selectedDamageMap = Main.damageMap[i + 1]!!
-        var selectedDamage = selectedDamageMap[player.name]
+        var damageMap = Main.damageMap[event.entity.uniqueId]
+        if(damageMap == null) Main.damageMap[event.entity.uniqueId] = HashMap()
+        damageMap = Main.damageMap[event.entity.uniqueId]!!
+        var selectedDamage = damageMap.get(player.name)
         if (selectedDamage == null) selectedDamage = 0.0
         selectedDamage += event.finalDamage
-        selectedDamageMap[player.name] = selectedDamage
+        damageMap[player.name] = selectedDamage
         if(event.entity is Mob){
-            if((event.entity as Mob).health - event.finalDamage < 0) lastToucherMap[i+1] = player.name
+            if((event.entity as Mob).health - event.finalDamage < 0) lastToucherMap[event.entity.uniqueId] = player.name
         }
     }
 

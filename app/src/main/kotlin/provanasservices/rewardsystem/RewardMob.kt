@@ -23,5 +23,5 @@ class RewardMob {
         return if (enabledWorld == null) true else enabledWorld == world
     }
 
-    data class ChanceReward(val chance: Int, val commands: String)
+    data class ChanceReward(val chance: Double, val commands: String)
 }

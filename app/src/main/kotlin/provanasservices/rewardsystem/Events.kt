@@ -160,7 +160,7 @@ class Events(private var plugin: Main) : Listener {
                 )
             })
             reward.allChanceRewards.forEach { (chance, allChanceReward) ->
-                val random = Random.nextInt(100)
+                val random = Random.nextDouble(100.0)
                 if(random <= chance){
                     Bukkit.dispatchCommand(
                         Bukkit.getConsoleSender(),
@@ -175,7 +175,7 @@ class Events(private var plugin: Main) : Listener {
                 )
             })
             reward.chanceRewards[rewardIndex]?.forEach { (chance, rewardString) ->
-                val random = Random.nextInt(100)
+                val random = Random.nextDouble(100.0)
                 if(random <= chance){
                     Bukkit.dispatchCommand(
                         Bukkit.getConsoleSender(),

@@ -74,9 +74,9 @@ class Main : JavaPlugin() {
                 val rewardPaths = "$s.RewardCommands"
                 val (chanceRewardsToAll, definiteRewardsToAll) = plugin.config.getStringList("$rewardPaths.all").partition { it.endsWith("%") }
                 reward.allRewards = definiteRewardsToAll
-                val filteredChanceRewardsToAll = chanceRewardsToAll.filter { it.split(" ").last().replace("%", "").toIntOrNull() != null }
+                val filteredChanceRewardsToAll = chanceRewardsToAll.filter { it.split(" ").last().replace("%", "").toDoubleOrNull() != null }
                 val mappedChanceRewardsToAll = filteredChanceRewardsToAll.map {
-                    val chance = it.split(" ").last().replace("%", "").toInt()
+                    val chance = it.split(" ").last().replace("%", "").toDouble()
                     val command = it.replace(" $chance%", "")
                     RewardMob.ChanceReward(chance, command)
                 }
@@ -89,9 +89,9 @@ class Main : JavaPlugin() {
 
                     reward.rewards[i] = definiteRewards
 
-                    val filteredChanceRewards = chanceRewards.filter { it.split(" ").last().replace("%", "").toIntOrNull() != null }
+                    val filteredChanceRewards = chanceRewards.filter { it.split(" ").last().replace("%", "").toDoubleOrNull() != null }
                     val mappedChanceRewards = filteredChanceRewards.map {
-                        val chance = it.split(" ").last().replace("%", "").toInt()
+                        val chance = it.split(" ").last().replace("%", "").toDouble()
                         val command = it.replace(" $chance%", "")
                         RewardMob.ChanceReward(chance, command)
                     }

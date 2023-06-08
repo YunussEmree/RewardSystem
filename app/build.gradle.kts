@@ -27,9 +27,6 @@ repositories {
 }
 
 dependencies {
-
-
-
     compileOnly(group="me.clip", name="placeholderapi", version="2.11.1")
     compileOnly("org.spigotmc:spigot-api:1.19.2-R0.1-SNAPSHOT")
     compileOnly("org.bstats:bstats-bukkit:1.7")

@@ -25,6 +25,7 @@ class Main : JavaPlugin() {
         }
 
         // Plugin startup logic
+        PLACEHOLDERAPI_ENABLED = Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")
         logger.info(ChatColor.GREEN.toString() + "Plugin startup")
         server.pluginManager.registerEvents(Events(this), this)
         reloadConfig()
@@ -39,6 +40,7 @@ class Main : JavaPlugin() {
     }
 
     companion object {
+        var PLACEHOLDERAPI_ENABLED = false
         @JvmField
         var rewardsFromConfig: ArrayList<RewardMob>? = null
         @JvmField
@@ -72,28 +74,58 @@ class Main : JavaPlugin() {
                 reward.rewardMessages = ArrayList(plugin.config.getStringList("$s.RewardMessage.message"))
                 reward.radius = plugin.config.getInt("$s.RewardMessage.radius", -1)
                 val rewardPaths = "$s.RewardCommands"
-                val (chanceRewardsToAll, definiteRewardsToAll) = plugin.config.getStringList("$rewardPaths.all").partition { it.endsWith("%") }
+                val allChanceRewards = plugin.config.getStringList("$rewardPaths.all")
+                val (filteredChanceRewardsToAll, definiteRewardsToAll) = allChanceRewards.partition { rewardString ->
+                    val rewardArgs = rewardString.split(" ")
+                    val lastRewardArg = rewardArgs.last()
+                    if(lastRewardArg.endsWith("%")) {
+                        val chance = lastRewardArg.replace("%", "").toDoubleOrNull()
+                        return@partition chance != null
+                    }
+                    if(PLACEHOLDERAPI_ENABLED) return@partition lastRewardArg.matches(Regex("""\{\w+\}"""));
+                    return@partition false
+                }
                 reward.allRewards = definiteRewardsToAll
-                val filteredChanceRewardsToAll = chanceRewardsToAll.filter { it.split(" ").last().replace("%", "").toDoubleOrNull() != null }
                 val mappedChanceRewardsToAll = filteredChanceRewardsToAll.map {
-                    val chance = it.split(" ").last().replace("%", "").toDouble()
-                    val command = it.replace(" $chance%", "")
-                    RewardMob.ChanceReward(chance, command)
+                    if(it.endsWith("%")) {
+                        val chance = it.split(" ").last().replace("%", "").toDouble()
+                        val command = it.replace(" $chance%", "")
+                        RewardMob.ChanceReward(chance, command)
+                    }
+                    else {
+                        val chanceString = it.split(" ").last()
+                        val command = it.split(" ").dropLast(1).joinToString(" ")
+                        RewardMob.ChanceReward(null, command, chanceString)
+                    }
                 }
                 reward.allChanceRewards = ArrayList(mappedChanceRewardsToAll)
                 var i = 1
                 while (plugin.config.contains("$rewardPaths.$i")) {
                     val rewardPath = ArrayList(plugin.config.getStringList("$rewardPaths.$i"))
 
-                    val (chanceRewards, definiteRewards) = rewardPath.partition { it.endsWith("%") }
-
+                    val (filteredChanceRewards, definiteRewards) = rewardPath.partition { rewardString ->
+                        val rewardArgs = rewardString.split(" ")
+                        val lastRewardArg = rewardArgs.last()
+                        if(lastRewardArg.endsWith("%")) {
+                            val chance = lastRewardArg.replace("%", "").toDoubleOrNull()
+                            return@partition chance != null
+                        }
+                        if(PLACEHOLDERAPI_ENABLED) return@partition lastRewardArg.matches(Regex("""\{\w+\}"""));
+                        return@partition false
+                    }
                     reward.rewards[i] = definiteRewards
 
-                    val filteredChanceRewards = chanceRewards.filter { it.split(" ").last().replace("%", "").toDoubleOrNull() != null }
                     val mappedChanceRewards = filteredChanceRewards.map {
-                        val chance = it.split(" ").last().replace("%", "").toDouble()
-                        val command = it.replace(" $chance%", "")
-                        RewardMob.ChanceReward(chance, command)
+                        if(it.endsWith("%")) {
+                            val chance = it.split(" ").last().replace("%", "").toDouble()
+                            val command = it.replace(" $chance%", "")
+                            RewardMob.ChanceReward(chance, command)
+                        }
+                        else {
+                            val chanceString = it.split(" ").last()
+                            val command = it.split(" ").dropLast(1).joinToString(" ")
+                            RewardMob.ChanceReward(null, command, chanceString)
+                        }
                     }
                     reward.chanceRewards[i] = mappedChanceRewards
                     i++

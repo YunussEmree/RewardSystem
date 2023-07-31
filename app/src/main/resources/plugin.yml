@@ -8,3 +8,5 @@ commands:
     description: Main command
     usage: /<command>
     permission: op
+softdepend:
+  - PlaceholderAPI

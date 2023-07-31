@@ -5,6 +5,7 @@ import com.sk89q.worldguard.WorldGuard
 import com.sk89q.worldguard.protection.managers.RegionManager
 import com.sk89q.worldguard.protection.regions.ProtectedRegion
 import com.sk89q.worldguard.protection.regions.RegionContainer
+import me.clip.placeholderapi.PlaceholderAPI
 import net.md_5.bungee.api.ChatColor
 import org.bukkit.Bukkit
 import org.bukkit.World
@@ -14,6 +15,7 @@ import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.entity.EntityDeathEvent
+import provanasservices.rewardsystem.Main.Companion.PLACEHOLDERAPI_ENABLED
 import provanasservices.rewardsystem.Main.Companion.damageMap
 import provanasservices.rewardsystem.Main.Companion.lastToucherMap
 import provanasservices.rewardsystem.Main.Companion.translateColors
@@ -159,13 +161,40 @@ class Events(private var plugin: Main) : Listener {
                     allReward.replace("%player%", key).replace("%damage%", value.toString())
                 )
             })
-            reward.allChanceRewards.forEach { (chance, allChanceReward) ->
+            reward.allChanceRewards.forEach { (chance, allChanceReward, chancePlaceholder) ->
                 val random = Random.nextDouble(100.0)
-                if(random <= chance){
-                    Bukkit.dispatchCommand(
-                        Bukkit.getConsoleSender(),
-                        allChanceReward.replace("%player%", key).replace("%damage%", value.toString())
-                    )
+                if(chance != null) {
+                    if(random <= chance){
+                        if(PLACEHOLDERAPI_ENABLED) {
+                            Bukkit.dispatchCommand(
+                                Bukkit.getConsoleSender(),
+                                PlaceholderAPI.setBracketPlaceholders(Bukkit.getPlayer(key), allChanceReward.replace("%player%", key).replace("%damage%", value.toString()))
+                            )
+                        }
+                        else {
+                            Bukkit.dispatchCommand(
+                                Bukkit.getConsoleSender(),
+                                allChanceReward.replace("%player%", key).replace("%damage%", value.toString())
+                            )
+                        }
+                    }
+                }
+                else if(chancePlaceholder != null) {
+                    val chanceExtracted = PlaceholderAPI.setBracketPlaceholders(Bukkit.getPlayer(key), chancePlaceholder)
+                    if(random <= chanceExtracted.toDouble()){
+                        if(PLACEHOLDERAPI_ENABLED) {
+                            Bukkit.dispatchCommand(
+                                Bukkit.getConsoleSender(),
+                                PlaceholderAPI.setBracketPlaceholders(Bukkit.getPlayer(key), allChanceReward.replace("%player%", key).replace("%damage%", value.toString()))
+                            )
+                        }
+                        else {
+                            Bukkit.dispatchCommand(
+                                Bukkit.getConsoleSender(),
+                                allChanceReward.replace("%player%", key).replace("%damage%", value.toString())
+                            )
+                        }
+                    }
                 }
             }
             reward.rewards[rewardIndex]?.forEach(Consumer { rewardString: String ->
@@ -174,14 +203,42 @@ class Events(private var plugin: Main) : Listener {
                     rewardString.replace("%player%", key).replace("%damage%", value.toString())
                 )
             })
-            reward.chanceRewards[rewardIndex]?.forEach { (chance, rewardString) ->
+            reward.chanceRewards[rewardIndex]?.forEach { (chance, rewardString, chancePlaceholder) ->
                 val random = Random.nextDouble(100.0)
-                if(random <= chance){
-                    Bukkit.dispatchCommand(
-                        Bukkit.getConsoleSender(),
-                        rewardString.replace("%player%", key).replace("%damage%", value.toString())
-                    )
+                if(chance != null) {
+                    if(random <= chance){
+                        if(PLACEHOLDERAPI_ENABLED) {
+                            Bukkit.dispatchCommand(
+                                Bukkit.getConsoleSender(),
+                                PlaceholderAPI.setBracketPlaceholders(Bukkit.getPlayer(key), rewardString.replace("%player%", key).replace("%damage%", value.toString()))
+                            )
+                        }
+                        else {
+                            Bukkit.dispatchCommand(
+                                Bukkit.getConsoleSender(),
+                                rewardString.replace("%player%", key).replace("%damage%", value.toString())
+                            )
+                        }
+                    }
                 }
+                else if(chancePlaceholder != null) {
+                    val chanceExtracted = PlaceholderAPI.setBracketPlaceholders(Bukkit.getPlayer(key), chancePlaceholder)
+                    if(random <= chanceExtracted.toDouble()){
+                        if(PLACEHOLDERAPI_ENABLED) {
+                            Bukkit.dispatchCommand(
+                                Bukkit.getConsoleSender(),
+                                PlaceholderAPI.setBracketPlaceholders(Bukkit.getPlayer(key), rewardString.replace("%player%", key).replace("%damage%", value.toString()))
+                            )
+                        }
+                        else {
+                            Bukkit.dispatchCommand(
+                                Bukkit.getConsoleSender(),
+                                rewardString.replace("%player%", key).replace("%damage%", value.toString())
+                            )
+                        }
+                    }
+                }
+
             }
             /*
             reward.chanceRewards.entries.forEach { (chanceRewards, chance) ->

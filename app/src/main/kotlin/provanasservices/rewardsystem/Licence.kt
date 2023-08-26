@@ -30,20 +30,7 @@ class Licence {
                     hexString.append(hex)
                 }
 
-
-                val checkIP = URL("http://checkip.amazonaws.com")
-                val reader = BufferedReader(
-                    InputStreamReader(
-                        checkIP.openStream()
-                    )
-                )
-                val ip = reader.readLine() //you get the IP as a String
-
-                hexString.toString()+ip
-                    .split(".")
-                    .slice(2..3)
-                    .joinToString("")
-                    .toInt().toString(16)
+                hexString.toString()
             } catch (e: Exception) {
                 e.printStackTrace()
                 "Error"

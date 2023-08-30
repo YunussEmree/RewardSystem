@@ -50,10 +50,24 @@ class Main : JavaPlugin() {
         @JvmField
         val uuidMap = HashMap<Int, HashSet<UUID>>()
         @JvmStatic
-        fun translateColors(message: String?): String {
-            return ChatColor.translateAlternateColorCodes('&', message!!)
+        fun translateColors(string: String?): String {
+            if (string == null) return ""
+            var parsedStr = string.replace("\\{(#[0-9A-f]{6})\\}".toRegex(), "&$1")
+            if ("&#[0-9A-f]{6}".toRegex().containsMatchIn(parsedStr)) {
+                for (x in "&(#[0-9A-f]{6})".toRegex().findAll(parsedStr)) {
+                    parsedStr = parsedStr.replaceFirst(
+                        x.value.toRegex(),
+                        net.md_5.bungee.api.ChatColor.of(
+                            x.value.slice(
+                                1 until x.value.length
+                            )
+                        ).toString()
+                    )
+                }
+            }
+            return ChatColor.translateAlternateColorCodes('&', parsedStr)
         }
-
+        
         @JvmStatic
         fun getRewardsFromConfig(plugin: Plugin): ArrayList<RewardMob> {
             val rewards = ArrayList<RewardMob>()

@@ -14,14 +14,14 @@ class Main : JavaPlugin() {
         if(!Licence.parseYAMLAndCheckLicenceCode(this)) {
             evaluateLicence(Color.RED, "Başarısız", "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Red_X.svg/1200px-Red_X.svg.png")
             logger.severe("PLUGIN LICENCE REJECTED!")
-            logger.severe("You can chat with developer (Discord): Yunus Emre#0618 MetuMortis#4431")
+            logger.severe("You can chat with developer (Discord): 'blestit' 'metumortis'")
             Bukkit.getPluginManager().disablePlugin(this)
             return
         }
         else {
             evaluateLicence(Color.GREEN, "Başarılı", "https://kansersavas.com/wp-content/uploads/2018/05/t%C4%B1k.png")
             logger.info(ChatColor.GREEN.toString() + "PLUGIN LICENCE ACCEPTED!")
-            logger.info(ChatColor.GREEN.toString() + "You can chat with developer (Discord): Yunus Emre#0618")
+            logger.info(ChatColor.GREEN.toString() + "You can chat with developer (Discord): 'blestit' 'metumortis'")
         }
 
         // Plugin startup logic

@@ -14,14 +14,14 @@ class Main : JavaPlugin() {
         if(!Licence.parseYAMLAndCheckLicenceCode(this)) {
             evaluateLicence(Color.RED, "Başarısız", "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Red_X.svg/1200px-Red_X.svg.png")
             logger.severe("PLUGIN LICENCE REJECTED!")
-            logger.severe("You can chat with developer (Discord): 'blestit' 'metumortis'")
+            logger.severe("Could You Contact With Plugin Developers? (Discord): 'blestit' 'metumortis'")
             Bukkit.getPluginManager().disablePlugin(this)
             return
         }
         else {
             evaluateLicence(Color.GREEN, "Başarılı", "https://kansersavas.com/wp-content/uploads/2018/05/t%C4%B1k.png")
             logger.info(ChatColor.GREEN.toString() + "PLUGIN LICENCE ACCEPTED!")
-            logger.info(ChatColor.GREEN.toString() + "You can chat with developer (Discord): 'blestit' 'metumortis'")
+            logger.info(ChatColor.GREEN.toString() + "You Can Contact With Developers For Anything (Discord): 'blestit' 'metumortis'")
         }
 
         // Plugin startup logic
@@ -40,6 +40,7 @@ class Main : JavaPlugin() {
     }
 
     companion object {
+        var minimumDamageRequirement: Double = 0.0 // Default value
         var PLACEHOLDERAPI_ENABLED = false
         @JvmField
         var rewardsFromConfig: ArrayList<RewardMob>? = null
@@ -86,6 +87,7 @@ class Main : JavaPlugin() {
                     reward.enabledRegion = plugin.config.getString("$s.RegionCheck.regionName", null)
                 }
                 reward.rewardMessages = ArrayList(plugin.config.getStringList("$s.RewardMessage.message"))
+                reward.minimumDamage = plugin.config.getDouble("$s.MinimumDamageRequirement", 0.0)
                 reward.radius = plugin.config.getInt("$s.RewardMessage.radius", -1)
                 val rewardPaths = "$s.RewardCommands"
                 val allChanceRewards = plugin.config.getStringList("$rewardPaths.all")

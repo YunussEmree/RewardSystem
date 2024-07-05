@@ -16,7 +16,6 @@ import org.bukkit.event.Listener
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.entity.EntityDeathEvent
 import provanasservices.rewardsystem.Main.Companion.PLACEHOLDERAPI_ENABLED
-import provanasservices.rewardsystem.Main.Companion.damageMap
 import provanasservices.rewardsystem.Main.Companion.lastToucherMap
 import provanasservices.rewardsystem.Main.Companion.translateColors
 import provanasservices.rewardsystem.Main.Companion.uuidMap
@@ -144,16 +143,24 @@ class Events(private var plugin: Main) : Listener {
 
     private fun giveRewards(i: Int, uuid: UUID, reward: RewardMob) {
         var selectedDamageMap = Main.damageMap[uuid] ?: return
+        val mobType = Bukkit.getEntity(uuid)?.type ?: return
+        var minimumdamage = plugin.config.getDouble("minimum_damage")
         Bukkit.getServer().pluginManager.callEvent(RewardSystemMobDieEvent(selectedDamageMap, i+1))
         val entrySet = ArrayList<Map.Entry<String, Double>>(selectedDamageMap.entries)
+
         entrySet.sortWith { (_, value): Map.Entry<String?, Double>, (_, value1): Map.Entry<String?, Double> ->
             value1.compareTo(
                 value
             )
         }
+
         for (index in 0 until selectedDamageMap.size) {
             val rewardIndex = index + 1
             val (key, value) = entrySet[index]
+
+            if(value < reward.minimumDamage){
+                continue
+            }
 
             reward.allRewards?.forEach(Consumer { allReward: String ->
                 Bukkit.dispatchCommand(
@@ -310,6 +317,8 @@ class Events(private var plugin: Main) : Listener {
             }
             return ChatColor.translateAlternateColorCodes('&', parsedStr)
         }
+
+
         private fun replacePlaceholders(string: String, playerName: String, map: HashMap<String, Double>, finalDamager: String, noOne: String = "No one"): String {
             val entries = ArrayList<Map.Entry<String, Double>>(map.entries)
             entries.sortWith { (_, value): Map.Entry<String?, Double>, (_, value1): Map.Entry<String?, Double> ->

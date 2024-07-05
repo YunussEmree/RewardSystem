@@ -75,6 +75,8 @@ RewardSystem:
             radius: 50
             #will print a message to players in a certain radius near the mob.
             #if you set "-1" this message will be sent all players
+        MinimumDamageRequirement: 0.0
+        #minimum damage required to get a reward, if you delete this line, it will be 0.0
     2:
         NameCheck:
             enabled: true
@@ -112,3 +114,5 @@ RewardSystem:
                 #Message to write after mob dies
             radius: 30
             #will print a message to players in a certain radius near the mob.
+        MinimumDamageRequirement: 0.0
+        #minimum damage required to get a reward

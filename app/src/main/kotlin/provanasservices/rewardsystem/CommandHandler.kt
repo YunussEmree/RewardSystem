@@ -22,6 +22,12 @@ class CommandHandler(private val plugin: JavaPlugin) : CommandExecutor {
                 plugin
             )
             sender.sendMessage(ChatColor.AQUA.toString() + "Reward System plugin successfully reloaded")
+        } else {
+            sender.sendMessage("§a§l-------[REWARD SYSTEM INFORMATION]-------")
+            sender.sendMessage(ChatColor.AQUA.toString() + " ")
+            sender.sendMessage(ChatColor.AQUA.toString() + "/rewardsystem reload §6-> §eReload the plugin")
+            sender.sendMessage(ChatColor.AQUA.toString() + " ")
+            sender.sendMessage("§a§l------------------------------------------")
         }
         return true
     }

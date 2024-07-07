@@ -35,8 +35,7 @@ class Events(private var plugin: Main) : Listener {
         if (damager is Player && entity is Mob) {
             val player: Player = damager
             val container: RegionContainer = WorldGuard.getInstance().platform.regionContainer
-            for (i in Main.rewardsFromConfig!!.indices) {
-                val reward = Main.rewardsFromConfig!![i]
+            for (reward in Main.rewardsFromConfig!!.values) {
                 if (reward.nameEquals(entity.name) && reward.typeEquals(entity.type.name) && reward.worldEquals(entity.world.name)) {
                     if (reward.enabledWorld != null) {
                         val world: World = Bukkit.getWorld(reward.enabledWorld!!)!!
@@ -44,13 +43,13 @@ class Events(private var plugin: Main) : Listener {
                             val regions: RegionManager? = container.get(BukkitAdapter.adapt(world))
                             val region: ProtectedRegion? = regions?.getRegion(reward.enabledRegion)
                             if (region!!.contains(BukkitAdapter.asBlockVector(entity.location))) {
-                                addToDamageMap(event, player, i)
+                                addToDamageMap(event, player)
                             }
                         } else {
-                            addToDamageMap(event, player, i)
+                            addToDamageMap(event, player)
                         }
                     } else {
-                        addToDamageMap(event, player, i)
+                        addToDamageMap(event, player)
                     }
                 }
             }
@@ -59,8 +58,7 @@ class Events(private var plugin: Main) : Listener {
             if (proj.shooter !is Player) return
             if (entity !is Mob) return
             val player: Player = proj.shooter as Player
-            for (i in Main.rewardsFromConfig!!.indices) {
-                val reward = Main.rewardsFromConfig!![i]
+            for (reward in Main.rewardsFromConfig!!.values) {
                 if (reward.nameEquals(entity.name) && reward.typeEquals(entity.type.name) && reward.worldEquals(entity.world.name)) {
                     if (reward.enabledWorld != null) {
                         val world: World = Bukkit.getWorld(reward.enabledWorld!!)!!
@@ -69,16 +67,16 @@ class Events(private var plugin: Main) : Listener {
                             val regions: RegionManager? = container.get(BukkitAdapter.adapt(world))
                             val region: ProtectedRegion? = regions!!.getRegion(reward.enabledRegion)
                             if (region!!.contains(BukkitAdapter.asBlockVector(entity.location))) {
-                                uuidMap[i+1]!!.add(event.entity.uniqueId)
-                                addToDamageMap(event, player, i)
+                                uuidMap[reward.id]!!.add(event.entity.uniqueId)
+                                addToDamageMap(event, player)
                             }
                         } else {
-                            uuidMap[i+1]!!.add(event.entity.uniqueId)
-                            addToDamageMap(event, player, i)
+                            uuidMap[reward.id]!!.add(event.entity.uniqueId)
+                            addToDamageMap(event, player)
                         }
                     } else {
-                        uuidMap[i+1]!!.add(event.entity.uniqueId)
-                        addToDamageMap(event, player, i)
+                        uuidMap[reward.id]!!.add(event.entity.uniqueId)
+                        addToDamageMap(event, player)
                     }
                 }
             }
@@ -91,8 +89,7 @@ class Events(private var plugin: Main) : Listener {
     fun onDeath(event: EntityDeathEvent) {
         val entity: Entity = event.entity
         //val player: Player? = event.entity.killer
-        for (i in Main.rewardsFromConfig!!.indices) {
-            val reward = Main.rewardsFromConfig!![i]
+        for (reward in Main.rewardsFromConfig!!.values) {
             if (reward.nameEquals(entity.name) && reward.typeEquals(entity.type.name) && reward.worldEquals(entity.world.name)) {
                 if (reward.enabledWorld != null) {
                     val world: World = Bukkit.getWorld(reward.enabledWorld!!)!!
@@ -101,13 +98,13 @@ class Events(private var plugin: Main) : Listener {
                         val regions: RegionManager? = container.get(BukkitAdapter.adapt(world))
                         val region: ProtectedRegion? = regions?.getRegion(reward.enabledRegion)
                         if (region!!.contains(BukkitAdapter.asBlockVector(entity.location))) {
-                            giveRewards(i, entity.uniqueId, reward)
+                            giveRewards(entity.uniqueId, reward)
                         }
                     } else {
-                        giveRewards(i, entity.uniqueId, reward)
+                        giveRewards(entity.uniqueId, reward)
                     }
                 } else {
-                    giveRewards(i, entity.uniqueId, reward)
+                    giveRewards(entity.uniqueId, reward)
                 }
                 val selectedMap = Main.damageMap[event.entity.uniqueId]!!
                 val finalDamager = Main.lastToucherMap[event.entity.uniqueId] ?: plugin.config.getString("no_one")!!
@@ -141,11 +138,11 @@ class Events(private var plugin: Main) : Listener {
         }
     }
 
-    private fun giveRewards(i: Int, uuid: UUID, reward: RewardMob) {
+    private fun giveRewards(uuid: UUID, reward: RewardMob) {
         var selectedDamageMap = Main.damageMap[uuid] ?: return
         val mobType = Bukkit.getEntity(uuid)?.type ?: return
         var minimumdamage = plugin.config.getDouble("minimum_damage")
-        Bukkit.getServer().pluginManager.callEvent(RewardSystemMobDieEvent(selectedDamageMap, i+1))
+        Bukkit.getServer().pluginManager.callEvent(RewardSystemMobDieEvent(selectedDamageMap, reward.id))
         val entrySet = ArrayList<Map.Entry<String, Double>>(selectedDamageMap.entries)
 
         entrySet.sortWith { (_, value): Map.Entry<String?, Double>, (_, value1): Map.Entry<String?, Double> ->
@@ -162,10 +159,27 @@ class Events(private var plugin: Main) : Listener {
                 continue
             }
 
+
+
+            val player :Player = Bukkit.getPlayerExact(key) ?: continue
+            println("Unique id of playeer is ${player.uniqueId}")
+            val uuid = player.getUniqueId()
+
+
+            if(reward.cooldown != 0 && reward.cooldowns[uuid] != null && reward.cooldowns[uuid]!! > System.currentTimeMillis()){
+                 if (!player.hasPermission("rewardsystem.cooldown.bypass") && !player.isOp) {
+                    player.sendMessage(translateColors(reward.cooldownMessage).replace("%time%", ((reward.cooldowns[uuid]!! - System.currentTimeMillis()) / 1000).toString()))
+                    continue
+                }
+            }
+
+
+            reward.cooldowns[uuid] = System.currentTimeMillis() + reward.cooldown * 1000
+
             reward.allRewards?.forEach(Consumer { allReward: String ->
                 Bukkit.dispatchCommand(
                     Bukkit.getConsoleSender(),
-                    allReward.replace("%player%", key).replace("%damage%", value.toString())
+                    allReward.replace("%player%", key).replace("%damage%", value.toString()),
                 )
             })
             reward.allChanceRewards.forEach { (chance, allChanceReward, chancePlaceholder) ->
@@ -263,9 +277,10 @@ class Events(private var plugin: Main) : Listener {
             TODO("Şansa bağlı ödüller test edilecek")
             */
         }
+        println(reward.cooldowns)
     }
 
-    private fun addToDamageMap(event: EntityDamageByEntityEvent, player: Player, i: Int) {
+    private fun addToDamageMap(event: EntityDamageByEntityEvent, player: Player) {
         var damageMap = Main.damageMap[event.entity.uniqueId]
         if(damageMap == null) Main.damageMap[event.entity.uniqueId] = HashMap()
         damageMap = Main.damageMap[event.entity.uniqueId]!!

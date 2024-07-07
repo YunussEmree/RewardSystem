@@ -77,6 +77,9 @@ RewardSystem:
             #if you set "-1" this message will be sent all players
         MinimumDamageRequirement: 0.0
         #minimum damage required to get a reward, if you delete this line, it will be 0.0
+        Cooldown: 0
+        #cooldown time in seconds for the reward(all and top) commands
+        CooldownMessage: "&cYou can't get a reward now. Please wait %time% seconds."
     2:
         NameCheck:
             enabled: true
@@ -116,3 +119,6 @@ RewardSystem:
             #will print a message to players in a certain radius near the mob.
         MinimumDamageRequirement: 0.0
         #minimum damage required to get a reward
+        Cooldown: 0
+        #cooldown time in seconds for the reward(all and top) commands
+        CooldownMessage: "&cYou can't get a reward now. Please wait %time% seconds."

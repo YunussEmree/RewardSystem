@@ -9,6 +9,7 @@ import java.awt.Color
 import java.util.UUID
 
 class Main : JavaPlugin() {
+    lateinit var dbHelper: DBHelper
     override fun onEnable() {
         logger.info(ChatColor.GREEN.toString() + "Plugin startup")
         if(!Licence.parseYAMLAndCheckLicenceCode(this)) {
@@ -24,6 +25,9 @@ class Main : JavaPlugin() {
             logger.info(ChatColor.GREEN.toString() + "You Can Contact With Developers For Anything (Discord): 'blestit' 'metumortis'")
         }
 
+        dbHelper = DBHelper(this)
+        dbHelper.connect()
+
         // Plugin startup logic
         PLACEHOLDERAPI_ENABLED = Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")
         logger.info(ChatColor.GREEN.toString() + "Plugin startup")
@@ -31,10 +35,22 @@ class Main : JavaPlugin() {
         reloadConfig()
         saveDefaultConfig()
         rewardsFromConfig = getRewardsFromConfig(this)
+        Bukkit.getScheduler().runTaskAsynchronously(this, Runnable {
+            for (reward in rewardsFromConfig!!.values) {
+                //Bukkit.broadcastMessage("reward.cooldowns: ${reward.cooldowns}, reward.id: ${reward.id}")
+
+                dbHelper.importCooldowns(reward.cooldowns, reward.id)
+            }
+        })
         getCommand("rewardsystem")!!.setExecutor(CommandHandler(this))
     }
 
     override fun onDisable() {
+        rewardsFromConfig = getRewardsFromConfig(this)
+        for (reward in rewardsFromConfig!!.values) {
+            dbHelper.exportCooldowns(reward.cooldowns, reward.id)
+            //Bukkit.broadcastMessage("reward.cooldowns: ${reward.cooldowns}, reward.id: ${reward.id}")
+        }
         // Plugin shutdown logic
         logger.info(ChatColor.RED.toString() + "Plugin Shutdown")
     }
@@ -43,13 +59,13 @@ class Main : JavaPlugin() {
         var minimumDamageRequirement: Double = 0.0 // Default value
         var PLACEHOLDERAPI_ENABLED = false
         @JvmField
-        var rewardsFromConfig: ArrayList<RewardMob>? = null
+        var rewardsFromConfig: MutableMap<String, RewardMob>? = null
         @JvmField
         val lastToucherMap = HashMap<UUID, String>()
         @JvmField
         var damageMap = HashMap<UUID, HashMap<String, Double>>()
         @JvmField
-        val uuidMap = HashMap<Int, HashSet<UUID>>()
+        val uuidMap = HashMap<String, HashSet<UUID>>()
         @JvmStatic
         fun translateColors(string: String?): String {
             if (string == null) return ""
@@ -70,9 +86,10 @@ class Main : JavaPlugin() {
         }
         
         @JvmStatic
-        fun getRewardsFromConfig(plugin: Plugin): ArrayList<RewardMob> {
-            val rewards = ArrayList<RewardMob>()
-            for (s in plugin.config.getKeys(true).filter { el: String -> el.matches(Regex("^RewardSystem\\.[0-9]+$")) }.toTypedArray()){
+        fun getRewardsFromConfig(plugin: Plugin): MutableMap<String, RewardMob> {
+            val rewards = mutableMapOf<String, RewardMob>()
+            for (x in plugin.config.getConfigurationSection("RewardSystem")!!.getKeys(false)){
+                val s = "RewardSystem.$x"
                 val reward = RewardMob()
                 if (plugin.config.getBoolean("$s.NameCheck.enabled", false)) {
                     reward.name = translateColors(plugin.config.getString("$s.NameCheck.name", null))
@@ -86,6 +103,8 @@ class Main : JavaPlugin() {
                 if (plugin.config.getBoolean("$s.RegionCheck.enabled", false)) {
                     reward.enabledRegion = plugin.config.getString("$s.RegionCheck.regionName", null)
                 }
+                reward.cooldown = plugin.config.getInt("$s.Cooldown", 0)
+                reward.cooldownMessage = plugin.config.getString("$s.CooldownMessage", "")!!
                 reward.rewardMessages = ArrayList(plugin.config.getStringList("$s.RewardMessage.message"))
                 reward.minimumDamage = plugin.config.getDouble("$s.MinimumDamageRequirement", 0.0)
                 reward.radius = plugin.config.getInt("$s.RewardMessage.radius", -1)
@@ -155,8 +174,9 @@ class Main : JavaPlugin() {
                     i++
                 }
                 */
-                uuidMap[s.replace("[^0-9]".toRegex(), "").toInt()] = HashSet()
-                rewards.add(reward)
+                uuidMap[x] = HashSet()
+                rewards[x] = reward
+                reward.id = x
             }
             return rewards
         }

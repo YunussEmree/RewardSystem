@@ -3,7 +3,7 @@ package provanasservices.rewardsystem
 import org.bukkit.event.Event
 import org.bukkit.event.HandlerList
 
-class RewardSystemMobDieEvent(val damageMap: HashMap<String, Double>, val mobIndex: Int) : Event() {
+class RewardSystemMobDieEvent(val damageMap: HashMap<String, Double>, val mobId: String) : Event() {
     companion object{
         val handlers = HandlerList()
         @JvmStatic

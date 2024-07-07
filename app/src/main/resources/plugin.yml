@@ -1,5 +1,5 @@
 name: RewardSystem
-version: 1.0.6
+version: 1.1.0
 main: provanasservices.rewardsystem.Main
 api-version: 1.16
 log_prefix: REWARDSYSTEM

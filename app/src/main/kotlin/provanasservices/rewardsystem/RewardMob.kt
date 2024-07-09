@@ -18,7 +18,7 @@ class RewardMob {
     var allChanceRewards = ArrayList<ChanceReward>()
     var minimumDamage = 0.0
     var cooldown = 0
-    val cooldowns = mutableMapOf<UUID, Long>()
+    var cooldowns: MutableMap<UUID, Long> = Collections.synchronizedMap(HashMap())
     var cooldownMessage = ""
     fun nameEquals(name: String): Boolean {
         return if (this.name == null) true else this.name == name

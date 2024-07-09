@@ -107,27 +107,47 @@ class Events(private var plugin: Main) : Listener {
                     giveRewards(entity.uniqueId, reward)
                 }
                 val selectedMap = Main.damageMap[event.entity.uniqueId]!!
-                val finalDamager = Main.lastToucherMap[event.entity.uniqueId] ?: plugin.config.getString("no_one")!!
-                if(selectedMap.isEmpty()){
+                val finalDamager = lastToucherMap[event.entity.uniqueId] ?: plugin.config.getString("no_one")!!
+                if (selectedMap.isEmpty()) {
                     plugin.logger.info(translateColors("&cNot giving rewards because no players have damaged the ${entity.name}."))
                 }
                 if (reward.radius == -1 && selectedMap.isNotEmpty()) {
-                    if(selectedMap.isEmpty()) return
+                    if (selectedMap.isEmpty()) return
                     reward.rewardMessages!!.forEach { message: String ->
                         Bukkit.getOnlinePlayers().forEach { onlinePlayer: Player ->
                             onlinePlayer.sendMessage(
-                                translateColors(replacePlaceholders(message, onlinePlayer.name, selectedMap, finalDamager, plugin.config.getString("no_one")!!))
+                                translateColors(
+                                    replacePlaceholders(
+                                        message,
+                                        onlinePlayer.name,
+                                        selectedMap,
+                                        finalDamager,
+                                        plugin.config.getString("no_one")!!
+                                    )
+                                )
                             )
                         }
                     }
                 } else {
-                    val nearPlayers = entity.getNearbyEntities(reward.radius.toDouble(), reward.radius.toDouble(), reward.radius.toDouble()).filterIsInstance<Player>()
-                    if(nearPlayers.isNotEmpty() && selectedMap.isNotEmpty()) {
+                    val nearPlayers = entity.getNearbyEntities(
+                        reward.radius.toDouble(),
+                        reward.radius.toDouble(),
+                        reward.radius.toDouble()
+                    ).filterIsInstance<Player>()
+                    if (nearPlayers.isNotEmpty() && selectedMap.isNotEmpty()) {
                         reward.rewardMessages!!.forEach { message: String ->
                             nearPlayers.forEach { onlinePlayer: Player ->
 
                                 onlinePlayer.sendMessage(
-                                    translateColors(replacePlaceholders(message, onlinePlayer.name, selectedMap, finalDamager, plugin.config.getString("no_one")!!))
+                                    translateColors(
+                                        replacePlaceholders(
+                                            message,
+                                            onlinePlayer.name,
+                                            selectedMap,
+                                            finalDamager,
+                                            plugin.config.getString("no_one")!!
+                                        )
+                                    )
                                 )
                             }
                         }
@@ -155,21 +175,28 @@ class Events(private var plugin: Main) : Listener {
             val rewardIndex = index + 1
             val (key, value) = entrySet[index]
 
-            if(value < reward.minimumDamage){
+            if (value < reward.minimumDamage) {
                 continue
             }
 
 
-
-            val player :Player = Bukkit.getPlayerExact(key) ?: continue
-            println("Unique id of playeer is ${player.uniqueId}")
+            val player: Player = Bukkit.getPlayerExact(key) ?: continue
             val uuid = player.getUniqueId()
 
 
-            if(reward.cooldown != 0 && reward.cooldowns[uuid] != null && reward.cooldowns[uuid]!! > System.currentTimeMillis()){
-                 if (!player.hasPermission("rewardsystem.cooldown.bypass") && !player.isOp) {
-                    player.sendMessage(translateColors(reward.cooldownMessage).replace("%time%", ((reward.cooldowns[uuid]!! - System.currentTimeMillis()) / 1000).toString()))
-                    continue
+            if (reward.cooldown != 0 && reward.cooldowns[uuid] != null) {
+                if (reward.cooldowns[uuid]!! > System.currentTimeMillis()) { // Cooldown is not expired
+                    if (!player.hasPermission("rewardsystem.cooldown.bypass") && !player.isOp) {
+                        player.sendMessage(
+                            translateColors(reward.cooldownMessage).replace(
+                                "%time%",
+                                ((reward.cooldowns[uuid]!! - System.currentTimeMillis()) / 1000).toString()
+                            )
+                        )
+                        continue
+                    }
+                } else {
+                    reward.cooldowns.remove(uuid)
                 }
             }
 
@@ -184,32 +211,36 @@ class Events(private var plugin: Main) : Listener {
             })
             reward.allChanceRewards.forEach { (chance, allChanceReward, chancePlaceholder) ->
                 val random = Random.nextDouble(100.0)
-                if(chance != null) {
-                    if(random <= chance){
-                        if(PLACEHOLDERAPI_ENABLED) {
+                if (chance != null) {
+                    if (random <= chance) {
+                        if (PLACEHOLDERAPI_ENABLED) {
                             Bukkit.dispatchCommand(
                                 Bukkit.getConsoleSender(),
-                                PlaceholderAPI.setBracketPlaceholders(Bukkit.getPlayer(key), allChanceReward.replace("%player%", key).replace("%damage%", value.toString()))
+                                PlaceholderAPI.setBracketPlaceholders(
+                                    Bukkit.getPlayer(key),
+                                    allChanceReward.replace("%player%", key).replace("%damage%", value.toString())
+                                )
                             )
-                        }
-                        else {
+                        } else {
                             Bukkit.dispatchCommand(
                                 Bukkit.getConsoleSender(),
                                 allChanceReward.replace("%player%", key).replace("%damage%", value.toString())
                             )
                         }
                     }
-                }
-                else if(chancePlaceholder != null) {
-                    val chanceExtracted = PlaceholderAPI.setBracketPlaceholders(Bukkit.getPlayer(key), chancePlaceholder)
-                    if(random <= chanceExtracted.toDouble()){
-                        if(PLACEHOLDERAPI_ENABLED) {
+                } else if (chancePlaceholder != null) {
+                    val chanceExtracted =
+                        PlaceholderAPI.setBracketPlaceholders(Bukkit.getPlayer(key), chancePlaceholder)
+                    if (random <= chanceExtracted.toDouble()) {
+                        if (PLACEHOLDERAPI_ENABLED) {
                             Bukkit.dispatchCommand(
                                 Bukkit.getConsoleSender(),
-                                PlaceholderAPI.setBracketPlaceholders(Bukkit.getPlayer(key), allChanceReward.replace("%player%", key).replace("%damage%", value.toString()))
+                                PlaceholderAPI.setBracketPlaceholders(
+                                    Bukkit.getPlayer(key),
+                                    allChanceReward.replace("%player%", key).replace("%damage%", value.toString())
+                                )
                             )
-                        }
-                        else {
+                        } else {
                             Bukkit.dispatchCommand(
                                 Bukkit.getConsoleSender(),
                                 allChanceReward.replace("%player%", key).replace("%damage%", value.toString())
@@ -226,32 +257,36 @@ class Events(private var plugin: Main) : Listener {
             })
             reward.chanceRewards[rewardIndex]?.forEach { (chance, rewardString, chancePlaceholder) ->
                 val random = Random.nextDouble(100.0)
-                if(chance != null) {
-                    if(random <= chance){
-                        if(PLACEHOLDERAPI_ENABLED) {
+                if (chance != null) {
+                    if (random <= chance) {
+                        if (PLACEHOLDERAPI_ENABLED) {
                             Bukkit.dispatchCommand(
                                 Bukkit.getConsoleSender(),
-                                PlaceholderAPI.setBracketPlaceholders(Bukkit.getPlayer(key), rewardString.replace("%player%", key).replace("%damage%", value.toString()))
+                                PlaceholderAPI.setBracketPlaceholders(
+                                    Bukkit.getPlayer(key),
+                                    rewardString.replace("%player%", key).replace("%damage%", value.toString())
+                                )
                             )
-                        }
-                        else {
+                        } else {
                             Bukkit.dispatchCommand(
                                 Bukkit.getConsoleSender(),
                                 rewardString.replace("%player%", key).replace("%damage%", value.toString())
                             )
                         }
                     }
-                }
-                else if(chancePlaceholder != null) {
-                    val chanceExtracted = PlaceholderAPI.setBracketPlaceholders(Bukkit.getPlayer(key), chancePlaceholder)
-                    if(random <= chanceExtracted.toDouble()){
-                        if(PLACEHOLDERAPI_ENABLED) {
+                } else if (chancePlaceholder != null) {
+                    val chanceExtracted =
+                        PlaceholderAPI.setBracketPlaceholders(Bukkit.getPlayer(key), chancePlaceholder)
+                    if (random <= chanceExtracted.toDouble()) {
+                        if (PLACEHOLDERAPI_ENABLED) {
                             Bukkit.dispatchCommand(
                                 Bukkit.getConsoleSender(),
-                                PlaceholderAPI.setBracketPlaceholders(Bukkit.getPlayer(key), rewardString.replace("%player%", key).replace("%damage%", value.toString()))
+                                PlaceholderAPI.setBracketPlaceholders(
+                                    Bukkit.getPlayer(key),
+                                    rewardString.replace("%player%", key).replace("%damage%", value.toString())
+                                )
                             )
-                        }
-                        else {
+                        } else {
                             Bukkit.dispatchCommand(
                                 Bukkit.getConsoleSender(),
                                 rewardString.replace("%player%", key).replace("%damage%", value.toString())
@@ -282,14 +317,15 @@ class Events(private var plugin: Main) : Listener {
 
     private fun addToDamageMap(event: EntityDamageByEntityEvent, player: Player) {
         var damageMap = Main.damageMap[event.entity.uniqueId]
-        if(damageMap == null) Main.damageMap[event.entity.uniqueId] = HashMap()
+        if (damageMap == null) Main.damageMap[event.entity.uniqueId] = HashMap()
         damageMap = Main.damageMap[event.entity.uniqueId]!!
         var selectedDamage = damageMap.get(player.name)
         if (selectedDamage == null) selectedDamage = 0.0
         selectedDamage += event.finalDamage
         damageMap[player.name] = selectedDamage
-        if(event.entity is Mob){
-            if((event.entity as Mob).health - event.finalDamage < 0) lastToucherMap[event.entity.uniqueId] = player.name
+        if (event.entity is Mob) {
+            if ((event.entity as Mob).health - event.finalDamage < 0) lastToucherMap[event.entity.uniqueId] =
+                player.name
         }
     }
 
@@ -320,21 +356,31 @@ class Events(private var plugin: Main) : Listener {
 
     companion object {
         fun String?.translateColors(): String {
-            if(this == null) return ""
+            if (this == null) return ""
             var parsedStr: String = this
             parsedStr = this.replace("""\{(#[0-9A-f]{6})\}""".toRegex(), "&$1")
-            if("&#[0-9A-f]{6}".toRegex().containsMatchIn(parsedStr)){
-                for (x in "&(#[0-9A-f]{6})".toRegex().findAll(parsedStr)){
-                    parsedStr = parsedStr.replaceFirst(x.value.toRegex(),ChatColor.of(x.value.slice(
-                        1 until x.value.length
-                    )).toString())
+            if ("&#[0-9A-f]{6}".toRegex().containsMatchIn(parsedStr)) {
+                for (x in "&(#[0-9A-f]{6})".toRegex().findAll(parsedStr)) {
+                    parsedStr = parsedStr.replaceFirst(
+                        x.value.toRegex(), ChatColor.of(
+                            x.value.slice(
+                                1 until x.value.length
+                            )
+                        ).toString()
+                    )
                 }
             }
             return ChatColor.translateAlternateColorCodes('&', parsedStr)
         }
 
 
-        private fun replacePlaceholders(string: String, playerName: String, map: HashMap<String, Double>, finalDamager: String, noOne: String = "No one"): String {
+        private fun replacePlaceholders(
+            string: String,
+            playerName: String,
+            map: HashMap<String, Double>,
+            finalDamager: String,
+            noOne: String = "No one"
+        ): String {
             val entries = ArrayList<Map.Entry<String, Double>>(map.entries)
             entries.sortWith { (_, value): Map.Entry<String?, Double>, (_, value1): Map.Entry<String?, Double> ->
                 value1.compareTo(

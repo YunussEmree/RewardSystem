@@ -8,7 +8,10 @@ import provanasservices.rewardsystem.Licence.Companion.evaluateLicence
 import java.awt.Color
 import java.util.UUID
 
+
+
 class Main : JavaPlugin() {
+
     lateinit var dbHelper: DBHelper
     override fun onEnable() {
         logger.info(ChatColor.GREEN.toString() + "Plugin startup")
@@ -37,19 +40,16 @@ class Main : JavaPlugin() {
         rewardsFromConfig = getRewardsFromConfig(this)
         Bukkit.getScheduler().runTaskAsynchronously(this, Runnable {
             for (reward in rewardsFromConfig!!.values) {
-                //Bukkit.broadcastMessage("reward.cooldowns: ${reward.cooldowns}, reward.id: ${reward.id}")
-
-                dbHelper.importCooldowns(reward.cooldowns, reward.id)
+                val currentTime = System.currentTimeMillis()
+                dbHelper.importCooldowns(reward.cooldowns, reward.id, currentTime)
             }
         })
         getCommand("rewardsystem")!!.setExecutor(CommandHandler(this))
     }
 
     override fun onDisable() {
-        rewardsFromConfig = getRewardsFromConfig(this)
         for (reward in rewardsFromConfig!!.values) {
             dbHelper.exportCooldowns(reward.cooldowns, reward.id)
-            //Bukkit.broadcastMessage("reward.cooldowns: ${reward.cooldowns}, reward.id: ${reward.id}")
         }
         // Plugin shutdown logic
         logger.info(ChatColor.RED.toString() + "Plugin Shutdown")

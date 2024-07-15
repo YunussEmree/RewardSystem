@@ -4,6 +4,12 @@ no_one: "No one"
 Debug:
     enabled: false
     #if these settings is true, all the "op" players can see mob details when hit the mob
+Database:
+    type: "sqlite" #mysql or sqlite . Default is sqlite
+    #if you use mysql, you need to fill the following fields with your database information. If you use sqlite, you don't need to fill them.
+    url: "url"
+    username: "username"
+    password: "password"
 RewardSystem:
     1:
         NameCheck:

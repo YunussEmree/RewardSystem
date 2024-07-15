@@ -1,15 +1,15 @@
-package provanasservices.rewardsystem
+package provanasservices.rewardsystem.Database
 
 import org.bukkit.Bukkit
+import provanasservices.rewardsystem.Main
 import java.io.File
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.PreparedStatement
 import java.sql.SQLException
-import java.sql.Time
 import java.util.UUID
 
-public class DBHelper(val plugin: Main) {
+public class SqliteHelper(val plugin: Main) : DbHelper() {
     val path: String
 
     init {
@@ -23,7 +23,9 @@ public class DBHelper(val plugin: Main) {
 
     private val DB_URL = "jdbc:sqlite:$path" // Path to your SQLite DB
     private lateinit var connection: Connection
-    fun connect() {
+
+
+    override fun connect() {
         try {
             // Create a connection to the database
             connection = DriverManager.getConnection(DB_URL).also {
@@ -37,7 +39,7 @@ public class DBHelper(val plugin: Main) {
         }
     }
 
-    fun exportCooldowns(map: Map<UUID, Long>, rewardMobId: String) {
+    override fun exportCooldowns(map: Map<UUID, Long>, rewardMobId: String) {
         var preparedStatement: PreparedStatement? = null
         try {
             connection.autoCommit = false // Ensure auto-commit is disabled
@@ -63,7 +65,7 @@ public class DBHelper(val plugin: Main) {
         }
     }
 
-    fun importCooldowns(cooldowns: MutableMap<UUID, Long>, rewardMobId: String, currentTimeLong: Long) {
+    override fun importCooldowns(cooldowns: MutableMap<UUID, Long>, rewardMobId: String, currentTimeLong: Long) {
         Bukkit.getScheduler().runTaskAsynchronously(plugin, Runnable {
             val statement = connection.createStatement()
 

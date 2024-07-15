@@ -2,17 +2,22 @@ package provanasservices.rewardsystem
 
 import org.bukkit.Bukkit
 import org.bukkit.ChatColor
+import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.plugin.Plugin
 import org.bukkit.plugin.java.JavaPlugin
+import provanasservices.rewardsystem.Database.DbHelper
+import provanasservices.rewardsystem.Database.MysqlHelper
+import provanasservices.rewardsystem.Database.SqliteHelper
 import provanasservices.rewardsystem.Licence.Companion.evaluateLicence
 import java.awt.Color
+import java.io.File
 import java.util.UUID
 
 
 
 class Main : JavaPlugin() {
 
-    lateinit var dbHelper: DBHelper
+    lateinit var dbHelper: DbHelper
     override fun onEnable() {
         logger.info(ChatColor.GREEN.toString() + "Plugin startup")
         if(!Licence.parseYAMLAndCheckLicenceCode(this)) {
@@ -27,8 +32,26 @@ class Main : JavaPlugin() {
             logger.info(ChatColor.GREEN.toString() + "PLUGIN LICENCE ACCEPTED!")
             logger.info(ChatColor.GREEN.toString() + "You Can Contact With Developers For Anything (Discord): 'blestit' 'metumortis'")
         }
+        val configFile = File(dataFolder, "config.yml")
+        if (!configFile.exists()) {
+            saveResource("config.yml", false)
+        }
+        val config = YamlConfiguration.loadConfiguration(configFile)
+        var databasetype = config.getString("Database.type", "sqlite").toString()
 
-        dbHelper = DBHelper(this)
+        when (databasetype) {
+            "mysql" -> {
+                dbHelper = MysqlHelper(this)
+            }
+            "sqlite" -> {
+                dbHelper = SqliteHelper(this)
+            }
+            else -> {
+                logger.severe("Invalid database type in config.yml")
+                Bukkit.getPluginManager().disablePlugin(this)
+                return
+            }
+        }
         dbHelper.connect()
 
         // Plugin startup logic

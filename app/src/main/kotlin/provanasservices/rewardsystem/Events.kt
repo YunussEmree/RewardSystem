@@ -87,57 +87,35 @@ class Events(private var plugin: Main) : Listener {
 
     @EventHandler
     fun onDeath(event: EntityDeathEvent) {
-        val entity: Entity = event.entity
-        //val player: Player? = event.entity.killer
-        for (reward in Main.rewardsFromConfig!!.values) {
-            if (reward.nameEquals(entity.name) && reward.typeEquals(entity.type.name) && reward.worldEquals(entity.world.name)) {
-                if (reward.enabledWorld != null) {
-                    val world: World = Bukkit.getWorld(reward.enabledWorld!!)!!
-                    if (reward.enabledRegion != null) {
-                        val container: RegionContainer = WorldGuard.getInstance().platform.regionContainer
-                        val regions: RegionManager? = container.get(BukkitAdapter.adapt(world))
-                        val region: ProtectedRegion? = regions?.getRegion(reward.enabledRegion)
-                        if (region!!.contains(BukkitAdapter.asBlockVector(entity.location))) {
+        try {
+            val entity: Entity = event.entity
+            //val player: Player? = event.entity.killer
+            for (reward in Main.rewardsFromConfig!!.values) {
+                if (reward.nameEquals(entity.name) && reward.typeEquals(entity.type.name) && reward.worldEquals(entity.world.name)) {
+                    if (reward.enabledWorld != null) {
+                        val world: World = Bukkit.getWorld(reward.enabledWorld!!)!!
+                        if (reward.enabledRegion != null) {
+                            val container: RegionContainer = WorldGuard.getInstance().platform.regionContainer
+                            val regions: RegionManager? = container.get(BukkitAdapter.adapt(world))
+                            val region: ProtectedRegion? = regions?.getRegion(reward.enabledRegion)
+                            if (region!!.contains(BukkitAdapter.asBlockVector(entity.location))) {
+                                giveRewards(entity.uniqueId, reward)
+                            }
+                        } else {
                             giveRewards(entity.uniqueId, reward)
                         }
                     } else {
                         giveRewards(entity.uniqueId, reward)
                     }
-                } else {
-                    giveRewards(entity.uniqueId, reward)
-                }
-                val selectedMap = Main.damageMap[event.entity.uniqueId]!!
-                val finalDamager = lastToucherMap[event.entity.uniqueId] ?: plugin.config.getString("no_one")!!
-                if (selectedMap.isEmpty()) {
-                    plugin.logger.info(translateColors("&cNot giving rewards because no players have damaged the ${entity.name}."))
-                }
-                if (reward.radius == -1 && selectedMap.isNotEmpty()) {
-                    if (selectedMap.isEmpty()) return
-                    reward.rewardMessages!!.forEach { message: String ->
-                        Bukkit.getOnlinePlayers().forEach { onlinePlayer: Player ->
-                            onlinePlayer.sendMessage(
-                                translateColors(
-                                    replacePlaceholders(
-                                        message,
-                                        onlinePlayer.name,
-                                        selectedMap,
-                                        finalDamager,
-                                        plugin.config.getString("no_one")!!
-                                    )
-                                )
-                            )
-                        }
+                    val selectedMap = Main.damageMap[event.entity.uniqueId]!!
+                    val finalDamager = lastToucherMap[event.entity.uniqueId] ?: plugin.config.getString("no_one")!!
+                    if (selectedMap.isEmpty()) {
+                        plugin.logger.info(translateColors("&cNot giving rewards because no players have damaged the ${entity.name}."))
                     }
-                } else {
-                    val nearPlayers = entity.getNearbyEntities(
-                        reward.radius.toDouble(),
-                        reward.radius.toDouble(),
-                        reward.radius.toDouble()
-                    ).filterIsInstance<Player>()
-                    if (nearPlayers.isNotEmpty() && selectedMap.isNotEmpty()) {
+                    if (reward.radius == -1 && selectedMap.isNotEmpty()) {
+                        if (selectedMap.isEmpty()) return
                         reward.rewardMessages!!.forEach { message: String ->
-                            nearPlayers.forEach { onlinePlayer: Player ->
-
+                            Bukkit.getOnlinePlayers().forEach { onlinePlayer: Player ->
                                 onlinePlayer.sendMessage(
                                     translateColors(
                                         replacePlaceholders(
@@ -151,10 +129,36 @@ class Events(private var plugin: Main) : Listener {
                                 )
                             }
                         }
+                    } else {
+                        val nearPlayers = entity.getNearbyEntities(
+                            reward.radius.toDouble(),
+                            reward.radius.toDouble(),
+                            reward.radius.toDouble()
+                        ).filterIsInstance<Player>()
+                        if (nearPlayers.isNotEmpty() && selectedMap.isNotEmpty()) {
+                            reward.rewardMessages!!.forEach { message: String ->
+                                nearPlayers.forEach { onlinePlayer: Player ->
+
+                                    onlinePlayer.sendMessage(
+                                        translateColors(
+                                            replacePlaceholders(
+                                                message,
+                                                onlinePlayer.name,
+                                                selectedMap,
+                                                finalDamager,
+                                                plugin.config.getString("no_one")!!
+                                            )
+                                        )
+                                    )
+                                }
+                            }
+                        }
                     }
+                    Main.damageMap[event.entity.uniqueId]!!.clear()
                 }
-                Main.damageMap[event.entity.uniqueId]!!.clear()
             }
+        } catch (ignored: NullPointerException){
+
         }
     }
 

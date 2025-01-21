@@ -33,7 +33,9 @@ repositories {
     maven("https://repo.papermc.io/repository/maven-public/")
     maven("https://oss.sonatype.org/content/groups/public/")
     maven("https://repo.codemc.io/repository/maven-public/")
+
 }
+
 
 dependencies {
     compileOnly(group="me.clip", name="placeholderapi", version="2.11.1")
@@ -49,6 +51,9 @@ dependencies {
 
     // Use the Kotlin JDK 18 standard library.
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+
+    // Use the Placeholderapi library.
+    implementation("me.clip:placeholderapi:2.11.6")
 
     // Use the Kotlin test library.
     // testImplementation("org.jetbrains.kotlin:kotlin-test")

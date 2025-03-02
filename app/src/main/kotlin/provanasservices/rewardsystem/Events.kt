@@ -208,10 +208,12 @@ class Events(private var plugin: Main) : Listener {
             reward.cooldowns[uuid] = System.currentTimeMillis() + reward.cooldown * 1000
 
             reward.allRewards?.forEach(Consumer { allReward: String ->
-                Bukkit.dispatchCommand(
-                    Bukkit.getConsoleSender(),
-                    allReward.replace("%player%", key).replace("%damage%", value.toString()),
-                )
+                if (allReward.isNotEmpty()) {
+                    Bukkit.dispatchCommand(
+                        Bukkit.getConsoleSender(),
+                        allReward.replace("%player%", key).replace("%damage%", value.toString()),
+                    )
+                }
             })
             reward.allChanceRewards.forEach { (chance, allChanceReward, chancePlaceholder) ->
                 val random = Random.nextDouble(100.0)
@@ -254,10 +256,12 @@ class Events(private var plugin: Main) : Listener {
                 }
             }
             reward.rewards[rewardIndex]?.forEach(Consumer { rewardString: String ->
-                Bukkit.dispatchCommand(
-                    Bukkit.getConsoleSender(),
-                    rewardString.replace("%player%", key).replace("%damage%", value.toString())
-                )
+                if (rewardString.isNotEmpty()) {
+                    Bukkit.dispatchCommand(
+                        Bukkit.getConsoleSender(),
+                        rewardString.replace("%player%", key).replace("%damage%", value.toString())
+                    )
+                }
             })
             reward.chanceRewards[rewardIndex]?.forEach { (chance, rewardString, chancePlaceholder) ->
                 val random = Random.nextDouble(100.0)

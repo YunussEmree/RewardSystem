@@ -259,7 +259,7 @@ class Events(private var plugin: Main) : Listener {
             reward.cooldowns[uuid] = System.currentTimeMillis() + reward.cooldown * 1000
 
             reward.allRewards?.forEach(Consumer { allReward: String ->
-                if (allReward.isNotEmpty()) {
+                if (allReward.isNotEmpty() && !allReward.equals("none", ignoreCase = true)) {
                     val cmd = allReward.replace("%player%", key).replace("%damage%", value.toString())
                     if (plugin.config.getBoolean("Debug.enabled")) {
                         plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $cmd")

@@ -8,11 +8,8 @@ import org.bukkit.plugin.java.JavaPlugin
 import provanasservices.rewardsystem.Database.DbHelper
 import provanasservices.rewardsystem.Database.MysqlHelper
 import provanasservices.rewardsystem.Database.SqliteHelper
-import provanasservices.rewardsystem.Licence.Companion.evaluateLicence
-import java.awt.Color
 import java.io.File
-import java.util.UUID
-
+import java.util.*
 
 
 class Main : JavaPlugin() {
@@ -20,15 +17,12 @@ class Main : JavaPlugin() {
     lateinit var dbHelper: DbHelper
     override fun onEnable() {
         logger.info(ChatColor.GREEN.toString() + "Plugin startup")
-        if(!Licence.parseYAMLAndCheckLicenceCode(this)) {
-            evaluateLicence(Color.RED, "Başarısız", "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Red_X.svg/1200px-Red_X.svg.png")
+        if (!Licence.parseYAMLAndCheckLicenceCode(this)) {
             logger.severe("PLUGIN LICENCE REJECTED!")
             logger.severe("Could You Contact With Plugin Developers? (Discord): 'blestit' 'metumortis'")
             Bukkit.getPluginManager().disablePlugin(this)
             return
-        }
-        else {
-            evaluateLicence(Color.GREEN, "Başarılı", "https://kansersavas.com/wp-content/uploads/2018/05/t%C4%B1k.png")
+        } else {
             logger.info(ChatColor.GREEN.toString() + "PLUGIN LICENCE ACCEPTED!")
             logger.info(ChatColor.GREEN.toString() + "You Can Contact With Developers For Anything (Discord): 'blestit' 'metumortis'")
         }
@@ -43,9 +37,11 @@ class Main : JavaPlugin() {
             "mysql" -> {
                 dbHelper = MysqlHelper(this)
             }
+
             "sqlite" -> {
                 dbHelper = SqliteHelper(this)
             }
+
             else -> {
                 logger.severe("Invalid database type in config.yml")
                 Bukkit.getPluginManager().disablePlugin(this)
@@ -81,14 +77,19 @@ class Main : JavaPlugin() {
     companion object {
         var minimumDamageRequirement: Double = 0.0 // Default value
         var PLACEHOLDERAPI_ENABLED = false
+
         @JvmField
         var rewardsFromConfig: MutableMap<String, RewardMob>? = null
+
         @JvmField
         val lastToucherMap = HashMap<UUID, String>()
+
         @JvmField
         var damageMap = HashMap<UUID, HashMap<String, Double>>()
+
         @JvmField
         val uuidMap = HashMap<String, HashSet<UUID>>()
+
         @JvmStatic
         fun translateColors(string: String?): String {
             if (string == null) return ""
@@ -107,11 +108,11 @@ class Main : JavaPlugin() {
             }
             return ChatColor.translateAlternateColorCodes('&', parsedStr)
         }
-        
+
         @JvmStatic
         fun getRewardsFromConfig(plugin: Plugin): MutableMap<String, RewardMob> {
             val rewards = mutableMapOf<String, RewardMob>()
-            for (x in plugin.config.getConfigurationSection("RewardSystem")!!.getKeys(false)){
+            for (x in plugin.config.getConfigurationSection("RewardSystem")!!.getKeys(false)) {
                 val s = "RewardSystem.$x"
                 val reward = RewardMob()
                 if (plugin.config.getBoolean("$s.NameCheck.enabled", false)) {
@@ -136,21 +137,20 @@ class Main : JavaPlugin() {
                 val (filteredChanceRewardsToAll, definiteRewardsToAll) = allChanceRewards.partition { rewardString ->
                     val rewardArgs = rewardString.split(" ")
                     val lastRewardArg = rewardArgs.last()
-                    if(lastRewardArg.endsWith("%")) {
+                    if (lastRewardArg.endsWith("%")) {
                         val chance = lastRewardArg.replace("%", "").toDoubleOrNull()
                         return@partition chance != null
                     }
-                    if(PLACEHOLDERAPI_ENABLED) return@partition lastRewardArg.matches(Regex("""\{\w+\}"""));
+                    if (PLACEHOLDERAPI_ENABLED) return@partition lastRewardArg.matches(Regex("""\{\w+\}"""))
                     return@partition false
                 }
                 reward.allRewards = definiteRewardsToAll
                 val mappedChanceRewardsToAll = filteredChanceRewardsToAll.map {
-                    if(it.endsWith("%")) {
+                    if (it.endsWith("%")) {
                         val chance = it.split(" ").last().replace("%", "").toDouble()
                         val command = it.replace(" $chance%", "")
                         RewardMob.ChanceReward(chance, command)
-                    }
-                    else {
+                    } else {
                         val chanceString = it.split(" ").last()
                         val command = it.split(" ").dropLast(1).joinToString(" ")
                         RewardMob.ChanceReward(null, command, chanceString)
@@ -164,22 +164,21 @@ class Main : JavaPlugin() {
                     val (filteredChanceRewards, definiteRewards) = rewardPath.partition { rewardString ->
                         val rewardArgs = rewardString.split(" ")
                         val lastRewardArg = rewardArgs.last()
-                        if(lastRewardArg.endsWith("%")) {
+                        if (lastRewardArg.endsWith("%")) {
                             val chance = lastRewardArg.replace("%", "").toDoubleOrNull()
                             return@partition chance != null
                         }
-                        if(PLACEHOLDERAPI_ENABLED) return@partition lastRewardArg.matches(Regex("""\{\w+\}"""));
+                        if (PLACEHOLDERAPI_ENABLED) return@partition lastRewardArg.matches(Regex("""\{\w+\}"""))
                         return@partition false
                     }
                     reward.rewards[i] = definiteRewards
 
                     val mappedChanceRewards = filteredChanceRewards.map {
-                        if(it.endsWith("%")) {
+                        if (it.endsWith("%")) {
                             val chance = it.split(" ").last().replace("%", "").toDouble()
                             val command = it.replace(" $chance%", "")
                             RewardMob.ChanceReward(chance, command)
-                        }
-                        else {
+                        } else {
                             val chanceString = it.split(" ").last()
                             val command = it.split(" ").dropLast(1).joinToString(" ")
                             RewardMob.ChanceReward(null, command, chanceString)

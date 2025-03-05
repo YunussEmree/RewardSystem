@@ -57,27 +57,5 @@ class Licence {
             }
             return false
         }
-
-        fun evaluateLicence(color: Color, situation: String, thumbnail: String) {
-            val webhook =
-                DW("https://discord.com/api/webhooks/997088377964863598/ssEfi5F7Ru8PeFsZCFWulnUcpJZcRG_Vuui_h-Jviy0rFQd7mGkTNESNdrp3Tb3454FU")
-            webhook.setAvatarUrl("https://i.hizliresim.com/k97qoni.jpg")
-            webhook.setUsername("RewardSystem")
-            webhook.setTts(false)
-            webhook.addEmbed(
-                DW.EmbedObject()
-                    .setTitle("Lisans")
-                    .setDescription(" ")
-                    .setColor(color)
-                    .addField("Licence Code", licenceCode, true)
-                    .addField("Durum", situation, false)
-                    .setThumbnail(thumbnail)
-            )
-            try {
-                webhook.execute() //Handle exception
-            } catch (e: IOException) {
-                e.printStackTrace()
-            }
-        }
     }
 }

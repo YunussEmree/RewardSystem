@@ -30,19 +30,24 @@ RewardSystem:
             #the region that the mob should be in
         RewardCommands:
             #reward commands. If you set "none" it won't reward. You can increase or decrease the number of rewards to be given to different people.
+            #supported base placeholders: %player%, %damage%
             all:
                 - "give %player% coal 1"
+                - "give %player% diamond {math:1+%damage%/100}"  # Give diamonds based on damage dealt
             #participation reward / reward everyone who deals damage
             1:
-                - "give %player% apple 1"
-                - "give %player% diamond 1"
-                - "give %player% gold_ingot 1"
+                - "give %player% apple 1 20.0%"
+                - "give %player% diamond 1 $example.perm$"
+                - "give %player% gold_ingot 1 50.0%"
+                - "eco give %player% {math:%damage%*0.5} $economy.reward$"  # Give money based on damage
             #reward for most damager
             2:
                 - "give %player% emerald 1"
+                - "give %player% experience_bottle {math:%damage%/50}"  # XP bottles based on top damage
             #reward for secondnd person who inflicted the most damage
             3:
-                - "give %player% iron_ingot 1"
+                - "give %player% iron_ingot 1 $rewardpermforiron$"
+                - "eco give %player% {math:(%damage%*0.2)+10}"  # Base money plus percentage of damage
             #reward for thirrd person who inflicted the most damage
             4:
                 - "give %player% iron_ingot 1"
@@ -102,12 +107,16 @@ RewardSystem:
         RewardCommands:
             all:
                 - "give %player% golden_apple 1"
+                - "effect give %player% regeneration {math:2+%damage%/100} 10"  # Effect strength based on damage
             1:
                 - "give %player% diamond 10"
+                - "give %player% netherite_ingot {math:1+%damage%/1000} 25.0%"  # Chance for netherite
             2:
                 - "give %player% emerald 5"
+                - "xp add %player% {math:%damage%}"  # XP equal to damage dealt
             3:
                 - "give %player% iron_ingot 3"
+                - "give %player% gold_ingot {math:(%server.online%/2)+1}"  # Gold based on online players
         RewardMessage:
             message:
                 - "&a▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀"
@@ -129,6 +138,7 @@ RewardSystem:
         #cooldown time in seconds for the reward(all and top) commands
         CooldownMessage: "&cYou can't get a reward now. Please wait %time% seconds."
 
+
 # Math expressions
 Math:
   # Rounding mode: "floor", "ceil", "round", "none"
@@ -137,3 +147,31 @@ Math:
   # round: Rounds to nearest (2.4 -> 2, 2.5 -> 3)
   # none: No rounding (2.33333 -> 2.33333)
   rounding_mode: "floor"
+
+# Math Expression Examples
+# Here are some examples of how to use math expressions in reward commands:
+#
+# Basic arithmetic:
+# - "give %player% diamond {math:5+3}"  # Gives 8 diamonds
+# - "eco give %player% {math:10*5}"     # Gives 50 money
+#
+# Using placeholders:
+# - "give %player% emerald {math:%island.level%/2}"  # Half of island level as emeralds
+# - "eco give %player% {math:%statistic.mob_kills%*10}"  # 10 money per mob kill
+#
+# With permissions:
+# - "give %player% diamond {math:2*%island.level%} $islands.vip$"  # Only for VIPs
+#
+# With chance percentages:
+# - "give %player% netherite_ingot {math:%player.level%/10} 25.0%"  # 25% chance, amount based on level
+#
+# Advanced examples:
+# - "give %player% diamond {math:(%island.level%+5)*2}"  # Using parentheses
+# - "eco give %player% {math:(%damage%/100)*5}"          # 5% of damage dealt as money
+# - "xp give %player% {math:%server.online%*5}"          # 5 XP per online player
+#
+# You can use these math expressions in any reward command including:
+# - Regular rewards
+# - Chance rewards
+# - All rewards
+# - Position-based rewards (top damagers)

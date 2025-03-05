@@ -58,7 +58,76 @@ class Events(private var plugin: Main) : Listener {
         Bukkit.dispatchCommand(sender, command)
     }
 
-
+    // Helper method to check permissions and dispatch commands with logging
+    private fun dispatchCommandWithPermCheck(player: Player, commandStr: String): Boolean {
+        // Extract permission if exists with format $permission.name$
+        val permPattern = "\\$(.*?)\\$".toRegex()
+        val permMatch = permPattern.find(commandStr)
+        
+        // If permission parameter exists, check it
+        if (permMatch != null) {
+            val permission = permMatch.groups[1]?.value
+            
+            // Remove permission part from command
+            val cleanCommand = commandStr.replace("$$permission$", "").trim()
+            
+            // Check if player has permission
+            if (permission != null && !player.hasPermission(permission)) {
+                if (plugin.config.getBoolean("Debug.enabled")) {
+                    plugin.logger.info("[REWARDSYSTEM DEBUG] Player ${player.name} doesn't have permission: $permission for command: $cleanCommand")
+                }
+                return false
+            }
+            
+            // Execute command without permission part
+            if (plugin.config.getBoolean("Debug.enabled")) {
+                plugin.logger.info("[REWARDSYSTEM DEBUG] Player ${player.name} has permission: $permission, executing: $cleanCommand")
+            }
+            
+            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cleanCommand)
+            return true
+        } else {
+            // No permission check needed, execute command as is
+            if (plugin.config.getBoolean("Debug.enabled")) {
+                plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $commandStr")
+            }
+            
+            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), commandStr)
+            return true
+        }
+    }
+    
+    // Parse command to extract chance and permission info
+    private fun parseCommand(command: String): Triple<String, String?, Double?> {
+        // Extract permission if exists
+        val permPattern = "\\$(.*?)\\$".toRegex()
+        val permMatch = permPattern.find(command)
+        val permission = permMatch?.groups?.get(1)?.value
+        
+        // Remove permission part for clean command
+        val withoutPerm = if (permission != null) {
+            command.replace("$$permission$", "").trim()
+        } else {
+            command
+        }
+        
+        // Check for percentage at end
+        val words = withoutPerm.split(" ")
+        val lastWord = words.lastOrNull()
+        
+        if (lastWord != null && lastWord.endsWith("%")) {
+            try {
+                val chance = lastWord.replace("%", "").toDouble()
+                val cleanCommand = withoutPerm.substring(0, withoutPerm.length - lastWord.length).trim()
+                return Triple(cleanCommand, permission, chance)
+            } catch (e: NumberFormatException) {
+                // Not a percentage
+            }
+        }
+        
+        return Triple(withoutPerm, permission, null)
+    }
+    
     @EventHandler(priority = EventPriority.MONITOR)
     fun onPlayerCommand(event: PlayerCommandPreprocessEvent) {
         // Log player commands
@@ -240,7 +309,7 @@ class Events(private var plugin: Main) : Listener {
 
 
             if (reward.cooldown != 0 && reward.cooldowns[uuid] != null) {
-                if (reward.cooldowns[uuid]!! > System.currentTimeMillis()) { // Cooldown is not expired
+                if (reward.cooldowns[uuid]!! > System.currentTimeMillis()) {
                     if (!player.hasPermission("rewardsystem.cooldown.bypass") && !player.isOp) {
                         player.sendMessage(
                             translateColors(reward.cooldownMessage).replace(
@@ -260,7 +329,20 @@ class Events(private var plugin: Main) : Listener {
 
             reward.allRewards?.forEach(Consumer { allReward: String ->
                 if (allReward.isNotEmpty() && !allReward.equals("none", ignoreCase = true)) {
-                    val cmd = allReward.replace("%player%", key).replace("%damage%", value.toString())
+                    val player = Bukkit.getPlayer(key) ?: return@Consumer
+
+                    val (parsedCommand, permission, _) = parseCommand(allReward)
+                    val cmd = parsedCommand.replace("%player%", key).replace("%damage%", value.toString())
+                    
+                    if (permission != null) {
+                        if (!player.hasPermission(permission)) {
+                            if (plugin.config.getBoolean("Debug.enabled")) {
+                                plugin.logger.info("[REWARDSYSTEM DEBUG] Player ${player.name} doesn't have permission: $permission for command: $cmd")
+                            }
+                            return@Consumer
+                        }
+                    }
+                    
                     if (plugin.config.getBoolean("Debug.enabled")) {
                         plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $cmd")
                     }
@@ -270,14 +352,28 @@ class Events(private var plugin: Main) : Listener {
                     )
                 }
             })
+
             reward.allChanceRewards.forEach { (chance, allChanceReward, chancePlaceholder) ->
                 val random = Random.nextDouble(100.0)
                 if (chance != null) {
                     if (random <= chance) {
+                        val player = Bukkit.getPlayer(key) ?: return@forEach
+
+                        val (parsedCommand, permission, _) = parseCommand(allChanceReward)
+                        
+                        if (permission != null) {
+                            if (!player.hasPermission(permission)) {
+                                if (plugin.config.getBoolean("Debug.enabled")) {
+                                    plugin.logger.info("[REWARDSYSTEM DEBUG] Player ${player.name} doesn't have permission: $permission for command")
+                                }
+                                return@forEach
+                            }
+                        }
+                        
                         if (PLACEHOLDERAPI_ENABLED) {
                             val processedCmd = PlaceholderAPI.setBracketPlaceholders(
-                                Bukkit.getPlayer(key),
-                                allChanceReward.replace("%player%", key).replace("%damage%", value.toString())
+                                player,
+                                parsedCommand.replace("%player%", key).replace("%damage%", value.toString())
                             )
                             if (plugin.config.getBoolean("Debug.enabled")) {
                                 plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $processedCmd")
@@ -287,7 +383,7 @@ class Events(private var plugin: Main) : Listener {
                                 processedCmd
                             )
                         } else {
-                            val cmd = allChanceReward.replace("%player%", key).replace("%damage%", value.toString())
+                            val cmd = parsedCommand.replace("%player%", key).replace("%damage%", value.toString())
                             if (plugin.config.getBoolean("Debug.enabled")) {
                                 plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $cmd")
                             }
@@ -298,13 +394,25 @@ class Events(private var plugin: Main) : Listener {
                         }
                     }
                 } else if (chancePlaceholder != null) {
+                    val player = Bukkit.getPlayer(key) ?: return@forEach
                     val chanceExtracted =
-                        PlaceholderAPI.setBracketPlaceholders(Bukkit.getPlayer(key), chancePlaceholder)
+                        PlaceholderAPI.setBracketPlaceholders(player, chancePlaceholder)
                     if (random <= chanceExtracted.toDouble()) {
+                        val (parsedCommand, permission, _) = parseCommand(allChanceReward)
+                        
+                        if (permission != null) {
+                            if (!player.hasPermission(permission)) {
+                                if (plugin.config.getBoolean("Debug.enabled")) {
+                                    plugin.logger.info("[REWARDSYSTEM DEBUG] Player ${player.name} doesn't have permission: $permission for command")
+                                }
+                                return@forEach
+                            }
+                        }
+                        
                         if (PLACEHOLDERAPI_ENABLED) {
                             val processedCmd = PlaceholderAPI.setBracketPlaceholders(
-                                Bukkit.getPlayer(key),
-                                allChanceReward.replace("%player%", key).replace("%damage%", value.toString())
+                                player,
+                                parsedCommand.replace("%player%", key).replace("%damage%", value.toString())
                             )
                             if (plugin.config.getBoolean("Debug.enabled")) {
                                 plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $processedCmd")
@@ -314,7 +422,7 @@ class Events(private var plugin: Main) : Listener {
                                 processedCmd
                             )
                         } else {
-                            val cmd = allChanceReward.replace("%player%", key).replace("%damage%", value.toString())
+                            val cmd = parsedCommand.replace("%player%", key).replace("%damage%", value.toString())
                             if (plugin.config.getBoolean("Debug.enabled")) {
                                 plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $cmd")
                             }
@@ -326,9 +434,23 @@ class Events(private var plugin: Main) : Listener {
                     }
                 }
             }
+
             reward.rewards[rewardIndex]?.forEach(Consumer { rewardString: String ->
                 if (rewardString.isNotEmpty()) {
-                    val cmd = rewardString.replace("%player%", key).replace("%damage%", value.toString())
+                    val player = Bukkit.getPlayer(key) ?: return@Consumer
+
+                    val (parsedCommand, permission, _) = parseCommand(rewardString)
+                    val cmd = parsedCommand.replace("%player%", key).replace("%damage%", value.toString())
+                    
+                    if (permission != null) {
+                        if (!player.hasPermission(permission)) {
+                            if (plugin.config.getBoolean("Debug.enabled")) {
+                                plugin.logger.info("[REWARDSYSTEM DEBUG] Player ${player.name} doesn't have permission: $permission for command: $cmd")
+                            }
+                            return@Consumer
+                        }
+                    }
+                    
                     if (plugin.config.getBoolean("Debug.enabled")) {
                         plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $cmd")
                     }
@@ -338,14 +460,28 @@ class Events(private var plugin: Main) : Listener {
                     )
                 }
             })
+
             reward.chanceRewards[rewardIndex]?.forEach { (chance, rewardString, chancePlaceholder) ->
                 val random = Random.nextDouble(100.0)
                 if (chance != null) {
                     if (random <= chance) {
+                        val player = Bukkit.getPlayer(key) ?: return@forEach
+
+                        val (parsedCommand, permission, _) = parseCommand(rewardString)
+                        
+                        if (permission != null) {
+                            if (!player.hasPermission(permission)) {
+                                if (plugin.config.getBoolean("Debug.enabled")) {
+                                    plugin.logger.info("[REWARDSYSTEM DEBUG] Player ${player.name} doesn't have permission: $permission for command")
+                                }
+                                return@forEach
+                            }
+                        }
+                        
                         if (PLACEHOLDERAPI_ENABLED) {
                             val processedCmd = PlaceholderAPI.setBracketPlaceholders(
-                                Bukkit.getPlayer(key),
-                                rewardString.replace("%player%", key).replace("%damage%", value.toString())
+                                player,
+                                parsedCommand.replace("%player%", key).replace("%damage%", value.toString())
                             )
                             if (plugin.config.getBoolean("Debug.enabled")) {
                                 plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $processedCmd")
@@ -355,7 +491,7 @@ class Events(private var plugin: Main) : Listener {
                                 processedCmd
                             )
                         } else {
-                            val cmd = rewardString.replace("%player%", key).replace("%damage%", value.toString())
+                            val cmd = parsedCommand.replace("%player%", key).replace("%damage%", value.toString())
                             if (plugin.config.getBoolean("Debug.enabled")) {
                                 plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $cmd")
                             }
@@ -366,13 +502,25 @@ class Events(private var plugin: Main) : Listener {
                         }
                     }
                 } else if (chancePlaceholder != null) {
+                    val player = Bukkit.getPlayer(key) ?: return@forEach
                     val chanceExtracted =
-                        PlaceholderAPI.setBracketPlaceholders(Bukkit.getPlayer(key), chancePlaceholder)
+                        PlaceholderAPI.setBracketPlaceholders(player, chancePlaceholder)
                     if (random <= chanceExtracted.toDouble()) {
+                        val (parsedCommand, permission, _) = parseCommand(rewardString)
+                        
+                        if (permission != null) {
+                            if (!player.hasPermission(permission)) {
+                                if (plugin.config.getBoolean("Debug.enabled")) {
+                                    plugin.logger.info("[REWARDSYSTEM DEBUG] Player ${player.name} doesn't have permission: $permission for command")
+                                }
+                                return@forEach
+                            }
+                        }
+                        
                         if (PLACEHOLDERAPI_ENABLED) {
                             val processedCmd = PlaceholderAPI.setBracketPlaceholders(
-                                Bukkit.getPlayer(key),
-                                rewardString.replace("%player%", key).replace("%damage%", value.toString())
+                                player,
+                                parsedCommand.replace("%player%", key).replace("%damage%", value.toString())
                             )
                             if (plugin.config.getBoolean("Debug.enabled")) {
                                 plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $processedCmd")
@@ -382,7 +530,7 @@ class Events(private var plugin: Main) : Listener {
                                 processedCmd
                             )
                         } else {
-                            val cmd = rewardString.replace("%player%", key).replace("%damage%", value.toString())
+                            val cmd = parsedCommand.replace("%player%", key).replace("%damage%", value.toString())
                             if (plugin.config.getBoolean("Debug.enabled")) {
                                 plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $cmd")
                             }
@@ -393,23 +541,7 @@ class Events(private var plugin: Main) : Listener {
                         }
                     }
                 }
-
             }
-            /*
-            reward.chanceRewards.entries.forEach { (chanceRewards, chance) ->
-                val random = Random.nextInt(100)
-                if(random <= chance){
-                    chanceRewards.forEach { chanceReward: String ->
-                        Bukkit.dispatchCommand(
-                            Bukkit.getConsoleSender(),
-                            chanceReward.replace("%player%", key).replace("%damage%", value.toString())
-                        )
-                    }
-                }
-
-            }
-            TODO("Şansa bağlı ödüller test edilecek")
-            */
         }
         println(reward.cooldowns)
     }

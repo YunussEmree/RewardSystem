@@ -3,6 +3,7 @@ package provanasservices.rewardsystem
 import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
+import net.md_5.bungee.api.ChatColor
 
 class RewardMob {
     var id: String = ""
@@ -21,7 +22,18 @@ class RewardMob {
     var cooldowns: MutableMap<UUID, Long> = Collections.synchronizedMap(HashMap())
     var cooldownMessage = ""
     fun nameEquals(name: String): Boolean {
-        return if (this.name == null) true else this.name == name
+        return if (this.name == null) true else {
+            val strippedInputName = ChatColor.stripColor(ChatColor.translateAlternateColorCodes('&', name))
+            val strippedConfigName = ChatColor.stripColor(ChatColor.translateAlternateColorCodes('&', this.name!!))
+
+            val plugin = Main.getInstance()
+            if (plugin.config.getBoolean("Debug.enabled")) {
+                plugin.logger.info("[REWARDSYSTEM DEBUG] Name comparison - Input: '$name', Config: '${this.name}'")
+                plugin.logger.info("[REWARDSYSTEM DEBUG] Stripped - Input: '$strippedInputName', Config: '$strippedConfigName'")
+            }
+
+            this.name == name || strippedConfigName == strippedInputName
+        }
     }
 
     fun typeEquals(type: String): Boolean {

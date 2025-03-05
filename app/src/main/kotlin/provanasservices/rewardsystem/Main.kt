@@ -15,7 +15,11 @@ import java.util.*
 class Main : JavaPlugin() {
 
     lateinit var dbHelper: DbHelper
+    
     override fun onEnable() {
+        // Set instance for singleton pattern
+        instance = this
+        
         logger.info(ChatColor.GREEN.toString() + "Plugin startup")
         if (!Licence.parseYAMLAndCheckLicenceCode(this)) {
             logger.severe("PLUGIN LICENCE REJECTED!")
@@ -75,6 +79,12 @@ class Main : JavaPlugin() {
     }
 
     companion object {
+        private lateinit var instance: Main
+        
+        fun getInstance(): Main {
+            return instance
+        }
+        
         var minimumDamageRequirement: Double = 0.0 // Default value
         var PLACEHOLDERAPI_ENABLED = false
 

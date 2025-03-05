@@ -9,12 +9,16 @@ import me.clip.placeholderapi.PlaceholderAPI
 import net.md_5.bungee.api.ChatColor
 import org.bukkit.Bukkit
 import org.bukkit.World
+import org.bukkit.command.CommandSender
+import org.bukkit.command.ConsoleCommandSender
 import org.bukkit.entity.*
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.entity.EntityDeathEvent
+import org.bukkit.event.player.PlayerCommandPreprocessEvent
+import org.bukkit.event.server.ServerCommandEvent
 import provanasservices.rewardsystem.Main.Companion.PLACEHOLDERAPI_ENABLED
 import provanasservices.rewardsystem.Main.Companion.lastToucherMap
 import provanasservices.rewardsystem.Main.Companion.translateColors
@@ -28,6 +32,52 @@ import kotlin.math.roundToInt
 import kotlin.random.Random
 
 class Events(private var plugin: Main) : Listener {
+    // Custom CommandSender wrapper to log all dispatched commands
+    private class LoggingCommandSender(private val original: ConsoleCommandSender, private val plugin: Main) : ConsoleCommandSender by original {
+        override fun sendMessage(message: String) {
+            original.sendMessage(message)
+        }
+    }
+    
+    init {
+        // Hook into Bukkit.dispatchCommand to log all plugin commands
+        setupCommandLogging()
+    }
+    
+    private fun setupCommandLogging() {
+        // Using reflection to create a hook for Bukkit.dispatchCommand would be ideal,
+        // but for simplicity we'll just log within our plugin's dispatchCommand calls
+        plugin.logger.info("Command logging for plugins initialized")
+    }
+    
+    // Helper method to dispatch commands with logging
+    fun dispatchCommandWithLogging(sender: CommandSender, command: String) {
+        if (plugin.config.getBoolean("Debug.enabled")) {
+            plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $command")
+        }
+        Bukkit.dispatchCommand(sender, command)
+    }
+
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    fun onPlayerCommand(event: PlayerCommandPreprocessEvent) {
+        // Log player commands
+        val command = event.message
+        if (plugin.config.getBoolean("Debug.enabled")) {
+            plugin.logger.info("[REWARDSYSTEM DEBUG] Player Command executed: $command")
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    fun onConsoleCommand(event: ServerCommandEvent) {
+        // Log console commands
+        val command = event.command
+        if (plugin.config.getBoolean("Debug.enabled")) {
+        plugin.logger.info("[REWARDSYSTEM DEBUG] Console Command executed: $command")
+        }
+    }
+
+
     @EventHandler(priority = EventPriority.MONITOR)
     fun onDamage(event: EntityDamageByEntityEvent) {
         val entity: Entity = event.entity
@@ -84,6 +134,7 @@ class Events(private var plugin: Main) : Listener {
             return
         }
     }
+
 
     @EventHandler
     fun onDeath(event: EntityDeathEvent) {
@@ -209,9 +260,13 @@ class Events(private var plugin: Main) : Listener {
 
             reward.allRewards?.forEach(Consumer { allReward: String ->
                 if (allReward.isNotEmpty()) {
+                    val cmd = allReward.replace("%player%", key).replace("%damage%", value.toString())
+                    if (plugin.config.getBoolean("Debug.enabled")) {
+                        plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $cmd")
+                    }
                     Bukkit.dispatchCommand(
                         Bukkit.getConsoleSender(),
-                        allReward.replace("%player%", key).replace("%damage%", value.toString()),
+                        cmd
                     )
                 }
             })
@@ -220,17 +275,25 @@ class Events(private var plugin: Main) : Listener {
                 if (chance != null) {
                     if (random <= chance) {
                         if (PLACEHOLDERAPI_ENABLED) {
+                            val processedCmd = PlaceholderAPI.setBracketPlaceholders(
+                                Bukkit.getPlayer(key),
+                                allChanceReward.replace("%player%", key).replace("%damage%", value.toString())
+                            )
+                            if (plugin.config.getBoolean("Debug.enabled")) {
+                                plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $processedCmd")
+                            }
                             Bukkit.dispatchCommand(
                                 Bukkit.getConsoleSender(),
-                                PlaceholderAPI.setBracketPlaceholders(
-                                    Bukkit.getPlayer(key),
-                                    allChanceReward.replace("%player%", key).replace("%damage%", value.toString())
-                                )
+                                processedCmd
                             )
                         } else {
+                            val cmd = allChanceReward.replace("%player%", key).replace("%damage%", value.toString())
+                            if (plugin.config.getBoolean("Debug.enabled")) {
+                                plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $cmd")
+                            }
                             Bukkit.dispatchCommand(
                                 Bukkit.getConsoleSender(),
-                                allChanceReward.replace("%player%", key).replace("%damage%", value.toString())
+                                cmd
                             )
                         }
                     }
@@ -239,17 +302,25 @@ class Events(private var plugin: Main) : Listener {
                         PlaceholderAPI.setBracketPlaceholders(Bukkit.getPlayer(key), chancePlaceholder)
                     if (random <= chanceExtracted.toDouble()) {
                         if (PLACEHOLDERAPI_ENABLED) {
+                            val processedCmd = PlaceholderAPI.setBracketPlaceholders(
+                                Bukkit.getPlayer(key),
+                                allChanceReward.replace("%player%", key).replace("%damage%", value.toString())
+                            )
+                            if (plugin.config.getBoolean("Debug.enabled")) {
+                                plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $processedCmd")
+                            }
                             Bukkit.dispatchCommand(
                                 Bukkit.getConsoleSender(),
-                                PlaceholderAPI.setBracketPlaceholders(
-                                    Bukkit.getPlayer(key),
-                                    allChanceReward.replace("%player%", key).replace("%damage%", value.toString())
-                                )
+                                processedCmd
                             )
                         } else {
+                            val cmd = allChanceReward.replace("%player%", key).replace("%damage%", value.toString())
+                            if (plugin.config.getBoolean("Debug.enabled")) {
+                                plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $cmd")
+                            }
                             Bukkit.dispatchCommand(
                                 Bukkit.getConsoleSender(),
-                                allChanceReward.replace("%player%", key).replace("%damage%", value.toString())
+                                cmd
                             )
                         }
                     }
@@ -257,9 +328,13 @@ class Events(private var plugin: Main) : Listener {
             }
             reward.rewards[rewardIndex]?.forEach(Consumer { rewardString: String ->
                 if (rewardString.isNotEmpty()) {
+                    val cmd = rewardString.replace("%player%", key).replace("%damage%", value.toString())
+                    if (plugin.config.getBoolean("Debug.enabled")) {
+                        plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $cmd")
+                    }
                     Bukkit.dispatchCommand(
                         Bukkit.getConsoleSender(),
-                        rewardString.replace("%player%", key).replace("%damage%", value.toString())
+                        cmd
                     )
                 }
             })
@@ -268,17 +343,25 @@ class Events(private var plugin: Main) : Listener {
                 if (chance != null) {
                     if (random <= chance) {
                         if (PLACEHOLDERAPI_ENABLED) {
+                            val processedCmd = PlaceholderAPI.setBracketPlaceholders(
+                                Bukkit.getPlayer(key),
+                                rewardString.replace("%player%", key).replace("%damage%", value.toString())
+                            )
+                            if (plugin.config.getBoolean("Debug.enabled")) {
+                                plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $processedCmd")
+                            }
                             Bukkit.dispatchCommand(
                                 Bukkit.getConsoleSender(),
-                                PlaceholderAPI.setBracketPlaceholders(
-                                    Bukkit.getPlayer(key),
-                                    rewardString.replace("%player%", key).replace("%damage%", value.toString())
-                                )
+                                processedCmd
                             )
                         } else {
+                            val cmd = rewardString.replace("%player%", key).replace("%damage%", value.toString())
+                            if (plugin.config.getBoolean("Debug.enabled")) {
+                                plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $cmd")
+                            }
                             Bukkit.dispatchCommand(
                                 Bukkit.getConsoleSender(),
-                                rewardString.replace("%player%", key).replace("%damage%", value.toString())
+                                cmd
                             )
                         }
                     }
@@ -287,17 +370,25 @@ class Events(private var plugin: Main) : Listener {
                         PlaceholderAPI.setBracketPlaceholders(Bukkit.getPlayer(key), chancePlaceholder)
                     if (random <= chanceExtracted.toDouble()) {
                         if (PLACEHOLDERAPI_ENABLED) {
+                            val processedCmd = PlaceholderAPI.setBracketPlaceholders(
+                                Bukkit.getPlayer(key),
+                                rewardString.replace("%player%", key).replace("%damage%", value.toString())
+                            )
+                            if (plugin.config.getBoolean("Debug.enabled")) {
+                                plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $processedCmd")
+                            }
                             Bukkit.dispatchCommand(
                                 Bukkit.getConsoleSender(),
-                                PlaceholderAPI.setBracketPlaceholders(
-                                    Bukkit.getPlayer(key),
-                                    rewardString.replace("%player%", key).replace("%damage%", value.toString())
-                                )
+                                processedCmd
                             )
                         } else {
+                            val cmd = rewardString.replace("%player%", key).replace("%damage%", value.toString())
+                            if (plugin.config.getBoolean("Debug.enabled")) {
+                                plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $cmd")
+                            }
                             Bukkit.dispatchCommand(
                                 Bukkit.getConsoleSender(),
-                                rewardString.replace("%player%", key).replace("%damage%", value.toString())
+                                cmd
                             )
                         }
                     }

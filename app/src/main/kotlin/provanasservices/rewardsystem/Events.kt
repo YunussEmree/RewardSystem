@@ -131,6 +131,24 @@ class Events(private var plugin: Main) : Listener {
         
         if (lastWord != null && lastWord.endsWith("%")) {
             try {
+                // First check if it's a math expression
+                val mathPattern = "\\{math:(.*?)\\}%".toRegex()
+                val mathMatch = mathPattern.find(lastWord)
+                
+                if (mathMatch != null) {
+                    // Found a math expression as chance percentage
+                    // We'll evaluate this later when we have player context
+                    val mathExpression = mathMatch.groupValues[1]
+                    val cleanCommand = withoutPerm.substring(0, withoutPerm.length - lastWord.length).trim()
+                    
+                    // Return Triple with mathExpression as placeholder
+                    return Triple(cleanCommand, permission, null).also {
+                        // Store the math expression for later evaluation
+                        mathChanceExpressions[cleanCommand] = mathExpression
+                    }
+                }
+                
+                // Standard percentage chance
                 val chance = lastWord.replace("%", "").toDouble()
                 val cleanCommand = withoutPerm.substring(0, withoutPerm.length - lastWord.length).trim()
                 return Triple(cleanCommand, permission, chance)
@@ -140,6 +158,27 @@ class Events(private var plugin: Main) : Listener {
         }
         
         return Triple(withoutPerm, permission, null)
+    }
+    
+    // Storage for math expressions to be evaluated later as chance percentages
+    private val mathChanceExpressions = HashMap<String, String>()
+    
+    // Helper method to evaluate math expressions for chance
+    private fun evaluateChanceExpression(expression: String, player: Player): Double {
+        val processedExpression = MathEvaluator.processCommand(
+            expression,
+            player,
+            plugin.config.getString("Math.rounding_mode", "floor") ?: "floor"
+        )
+        
+        return try {
+            processedExpression.toDouble()
+        } catch (e: NumberFormatException) {
+            if (plugin.config.getBoolean("Debug.enabled")) {
+                plugin.logger.info("[REWARDSYSTEM DEBUG] Failed to convert math result to chance: $processedExpression")
+            }
+            0.0
+        }
     }
     
     @EventHandler(priority = EventPriority.MONITOR)
@@ -397,6 +436,20 @@ class Events(private var plugin: Main) : Listener {
                             }
                         }
                         
+                        // Check if this command has a math expression for chance
+                        val mathChanceExpression = mathChanceExpressions[parsedCommand]
+                        if (mathChanceExpression != null) {
+                            // Evaluate the chance with player context
+                            val calculatedChance = evaluateChanceExpression(mathChanceExpression, player)
+                            if (random > calculatedChance) {
+                                // Chance failed
+                                if (plugin.config.getBoolean("Debug.enabled")) {
+                                    plugin.logger.info("[REWARDSYSTEM DEBUG] Math chance failed: $calculatedChance% < $random%")
+                                }
+                                return@forEach
+                            }
+                        }
+                        
                         if (PLACEHOLDERAPI_ENABLED) {
                             val placeholderReplaced = parsedCommand.replace("%player%", key).replace("%damage%", value.toString())
                             val processedCmd = PlaceholderAPI.setBracketPlaceholders(player, placeholderReplaced)
@@ -445,6 +498,20 @@ class Events(private var plugin: Main) : Listener {
                             if (!player.hasPermission(permission)) {
                                 if (plugin.config.getBoolean("Debug.enabled")) {
                                     plugin.logger.info("[REWARDSYSTEM DEBUG] Player ${player.name} doesn't have permission: $permission for command")
+                                }
+                                return@forEach
+                            }
+                        }
+                        
+                        // Check if this command has a math expression for chance
+                        val mathChanceExpression = mathChanceExpressions[parsedCommand]
+                        if (mathChanceExpression != null) {
+                            // Evaluate the chance with player context
+                            val calculatedChance = evaluateChanceExpression(mathChanceExpression, player)
+                            if (random > calculatedChance) {
+                                // Chance failed
+                                if (plugin.config.getBoolean("Debug.enabled")) {
+                                    plugin.logger.info("[REWARDSYSTEM DEBUG] Math chance failed: $calculatedChance% < $random%")
                                 }
                                 return@forEach
                             }
@@ -531,6 +598,20 @@ class Events(private var plugin: Main) : Listener {
                             }
                         }
                         
+                        // Check if this command has a math expression for chance
+                        val mathChanceExpression = mathChanceExpressions[parsedCommand]
+                        if (mathChanceExpression != null) {
+                            // Evaluate the chance with player context
+                            val calculatedChance = evaluateChanceExpression(mathChanceExpression, player)
+                            if (random > calculatedChance) {
+                                // Chance failed
+                                if (plugin.config.getBoolean("Debug.enabled")) {
+                                    plugin.logger.info("[REWARDSYSTEM DEBUG] Math chance failed: $calculatedChance% < $random%")
+                                }
+                                return@forEach
+                            }
+                        }
+                        
                         if (PLACEHOLDERAPI_ENABLED) {
                             val placeholderReplaced = parsedCommand.replace("%player%", key).replace("%damage%", value.toString())
                             val processedCmd = PlaceholderAPI.setBracketPlaceholders(player, placeholderReplaced)
@@ -577,6 +658,20 @@ class Events(private var plugin: Main) : Listener {
                             if (!player.hasPermission(permission)) {
                                 if (plugin.config.getBoolean("Debug.enabled")) {
                                     plugin.logger.info("[REWARDSYSTEM DEBUG] Player ${player.name} doesn't have permission: $permission for command")
+                                }
+                                return@forEach
+                            }
+                        }
+                        
+                        // Check if this command has a math expression for chance
+                        val mathChanceExpression = mathChanceExpressions[parsedCommand]
+                        if (mathChanceExpression != null) {
+                            // Evaluate the chance with player context
+                            val calculatedChance = evaluateChanceExpression(mathChanceExpression, player)
+                            if (random > calculatedChance) {
+                                // Chance failed
+                                if (plugin.config.getBoolean("Debug.enabled")) {
+                                    plugin.logger.info("[REWARDSYSTEM DEBUG] Math chance failed: $calculatedChance% < $random%")
                                 }
                                 return@forEach
                             }

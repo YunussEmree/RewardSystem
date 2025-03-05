@@ -31,6 +31,22 @@ Example:
 /give %player% diamond {math:3*%server.online%}
 ```
 
+## Dynamic Chance Percentages
+
+You can now use mathematical expressions to calculate chance percentages dynamically. Use the following format:
+
+```
+/give %player% diamond 5 {math:10+%damage%*0.5}%
+```
+
+This means the chance of receiving diamonds increases with damage dealt. A player who dealt 100 damage would have a 60% chance (10 + 100*0.5 = 60%).
+
+Other examples:
+```
+/give %player% emerald 3 {math:%island.level%*2}%  # 2% per island level
+/eco give %player% 1000 {math:5+(%damage%/100)}%   # Base 5% + 1% per 100 damage
+```
+
 ## Rounding Modes
 
 There are four different rounding modes for decimal results:
@@ -69,9 +85,15 @@ Math:
    /give %player% emerald {math:%server.online%/2+1}
    ```
 
+5. Dynamic chance based on damage:
+   ```
+   /give %player% netherite_ingot 1 {math:%damage%*0.1}%
+   ```
+
 ## Important Notes
 
 - If a mathematical expression is invalid (such as division by zero), the result will be 0
 - Make sure PlaceholderAPI is installed
 - Avoid overly complex expressions
-- Be aware of potential overflow issues when working with large numbers 
+- Be aware of potential overflow issues when working with large numbers
+- For dynamic chance percentages, the calculated value is treated as a percentage (0-100 range) 

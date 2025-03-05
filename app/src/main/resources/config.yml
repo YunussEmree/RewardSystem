@@ -34,12 +34,14 @@ RewardSystem:
             all:
                 - "give %player% coal 1"
                 - "give %player% diamond {math:1+%damage%/100}"  # Give diamonds based on damage dealt
+                - "give %player% netherite_ingot 1 {math:%damage%*0.1}%"  # Chance based on damage (0.1% per damage point)
             #participation reward / reward everyone who deals damage
             1:
                 - "give %player% apple 1 20.0%"
                 - "give %player% diamond 1 $example.perm$"
                 - "give %player% gold_ingot 1 50.0%"
                 - "eco give %player% {math:%damage%*0.5} $economy.reward$"  # Give money based on damage
+                - "give %player% obsidian {math:%damage%/10} {math:5+%damage%/20}%"  # Increased chance for higher damage
             #reward for most damager
             2:
                 - "give %player% emerald 1"
@@ -108,15 +110,19 @@ RewardSystem:
             all:
                 - "give %player% golden_apple 1"
                 - "effect give %player% regeneration {math:2+%damage%/100} 10"  # Effect strength based on damage
+                - "give %player% experience_bottle 5 {math:20+%damage%/50}%"  # Better chance with more damage
             1:
                 - "give %player% diamond 10"
                 - "give %player% netherite_ingot {math:1+%damage%/1000} 25.0%"  # Chance for netherite
+                - "eco give %player% 1000 {math:%damage%/10}%"  # Money with chance based on damage
             2:
                 - "give %player% emerald 5"
                 - "xp add %player% {math:%damage%}"  # XP equal to damage dealt
+                - "give %player% dragon_egg 1 {math:(%damage%/1000)}%"  # Very rare reward with chance based on damage
             3:
                 - "give %player% iron_ingot 3"
                 - "give %player% gold_ingot {math:(%server.online%/2)+1}"  # Gold based on online players
+                - "effect give %player% strength 30 2 {math:(%damage%/50)+10}%"  # Strength effect with chance based on damage
         RewardMessage:
             message:
                 - "&a▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀"
@@ -163,7 +169,13 @@ Math:
 # - "give %player% diamond {math:2*%island.level%} $islands.vip$"  # Only for VIPs
 #
 # With chance percentages:
-# - "give %player% netherite_ingot {math:%player.level%/10} 25.0%"  # 25% chance, amount based on level
+# - "give %player% netherite_ingot {math:1+%player.level%/10} 25.0%"  # 25% chance, amount based on level
+#
+# Dynamic chance percentages (NEW FEATURE):
+# - "give %player% diamond 5 {math:10+%damage%*0.5}%"  # Chance based on damage
+# - "give %player% emerald 3 {math:%island.level%*2}%"  # Chance based on island level
+# - "give %player% gold_ingot 10 {math:%server.online%*5}%"  # Chance based on online players
+# - "eco give %player% 1000 {math:5+(%damage%/100)}%"  # Base chance plus damage percentage
 #
 # Advanced examples:
 # - "give %player% diamond {math:(%island.level%+5)*2}"  # Using parentheses

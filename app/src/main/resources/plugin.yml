@@ -1,9 +1,5 @@
 name: RewardSystem
-<<<<<<< HEAD
 version: 1.1.7
-=======
-version: 1.1.6
->>>>>>> origin/kotlin
 main: provanasservices.rewardsystem.Main
 api-version: 1.16
 log_prefix: REWARDSYSTEM

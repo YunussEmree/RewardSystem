@@ -23,28 +23,18 @@ class RewardMob {
     var cooldownMessage = ""
     fun nameEquals(name: String): Boolean {
         return if (this.name == null) true else {
-<<<<<<< HEAD
-            val strippedInputName = ChatColor.stripColor(ChatColor.translateAlternateColorCodes('&', name))
-            val strippedConfigName = ChatColor.stripColor(ChatColor.translateAlternateColorCodes('&', this.name!!))
-
-=======
             // Strip color codes for comparison
             val strippedInputName = ChatColor.stripColor(ChatColor.translateAlternateColorCodes('&', name))
             val strippedConfigName = ChatColor.stripColor(ChatColor.translateAlternateColorCodes('&', this.name!!))
             
             // Log comparison if debug is enabled
->>>>>>> origin/kotlin
             val plugin = Main.getInstance()
             if (plugin.config.getBoolean("Debug.enabled")) {
                 plugin.logger.info("[REWARDSYSTEM DEBUG] Name comparison - Input: '$name', Config: '${this.name}'")
                 plugin.logger.info("[REWARDSYSTEM DEBUG] Stripped - Input: '$strippedInputName', Config: '$strippedConfigName'")
             }
-<<<<<<< HEAD
-
-=======
             
             // Try both direct and stripped comparison
->>>>>>> origin/kotlin
             this.name == name || strippedConfigName == strippedInputName
         }
     }

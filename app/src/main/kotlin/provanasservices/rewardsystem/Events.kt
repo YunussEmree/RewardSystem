@@ -79,20 +79,34 @@ class Events(private var plugin: Main) : Listener {
                 return false
             }
             
-            // Execute command without permission part
+            // Process math expressions in the command
+            val processedCommand = MathEvaluator.processCommand(
+                cleanCommand,
+                player,
+                plugin.config.getString("Math.rounding_mode", "floor") ?: "floor"
+            )
+            
+            // Execute command with processed math
             if (plugin.config.getBoolean("Debug.enabled")) {
-                plugin.logger.info("[REWARDSYSTEM DEBUG] Player ${player.name} has permission: $permission, executing: $cleanCommand")
+                plugin.logger.info("[REWARDSYSTEM DEBUG] Player ${player.name} has permission: $permission, executing: $processedCommand")
             }
             
-            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cleanCommand)
+            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), processedCommand)
             return true
         } else {
-            // No permission check needed, execute command as is
+            // No permission check needed, but still process math expressions
+            val processedCommand = MathEvaluator.processCommand(
+                commandStr,
+                player,
+                plugin.config.getString("Math.rounding_mode", "floor") ?: "floor"
+            )
+            
+            // Execute command with processed math
             if (plugin.config.getBoolean("Debug.enabled")) {
-                plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $commandStr")
+                plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $processedCommand")
             }
             
-            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), commandStr)
+            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), processedCommand)
             return true
         }
     }
@@ -327,28 +341,41 @@ class Events(private var plugin: Main) : Listener {
 
             reward.cooldowns[uuid] = System.currentTimeMillis() + reward.cooldown * 1000
 
+            // Process allRewards
             reward.allRewards?.forEach(Consumer { allReward: String ->
                 if (allReward.isNotEmpty() && !allReward.equals("none", ignoreCase = true)) {
                     val player = Bukkit.getPlayer(key) ?: return@Consumer
-
+                    
+                    // Parse and check permission
                     val (parsedCommand, permission, _) = parseCommand(allReward)
-                    val cmd = parsedCommand.replace("%player%", key).replace("%damage%", value.toString())
+                    
+                    // Process math expressions
+                    val placeholderReplaced = parsedCommand.replace("%player%", key).replace("%damage%", value.toString())
+                    val processedCmd = PlaceholderAPI.setBracketPlaceholders(player, placeholderReplaced)
+                    
+                    // Process math expressions
+                    val mathProcessed = MathEvaluator.processCommand(
+                        processedCmd,
+                        player,
+                        plugin.config.getString("Math.rounding_mode", "floor") ?: "floor"
+                    )
                     
                     if (permission != null) {
+                        // Check permission
                         if (!player.hasPermission(permission)) {
                             if (plugin.config.getBoolean("Debug.enabled")) {
-                                plugin.logger.info("[REWARDSYSTEM DEBUG] Player ${player.name} doesn't have permission: $permission for command: $cmd")
+                                plugin.logger.info("[REWARDSYSTEM DEBUG] Player ${player.name} doesn't have permission: $permission for command: $mathProcessed")
                             }
                             return@Consumer
                         }
                     }
                     
                     if (plugin.config.getBoolean("Debug.enabled")) {
-                        plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $cmd")
+                        plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $mathProcessed")
                     }
                     Bukkit.dispatchCommand(
                         Bukkit.getConsoleSender(),
-                        cmd
+                        mathProcessed
                     )
                 }
             })
@@ -371,19 +398,33 @@ class Events(private var plugin: Main) : Listener {
                         }
                         
                         if (PLACEHOLDERAPI_ENABLED) {
-                            val processedCmd = PlaceholderAPI.setBracketPlaceholders(
+                            val placeholderReplaced = parsedCommand.replace("%player%", key).replace("%damage%", value.toString())
+                            val processedCmd = PlaceholderAPI.setBracketPlaceholders(player, placeholderReplaced)
+                            
+                            // Process math expressions
+                            val mathProcessed = MathEvaluator.processCommand(
+                                processedCmd,
                                 player,
-                                parsedCommand.replace("%player%", key).replace("%damage%", value.toString())
+                                plugin.config.getString("Math.rounding_mode", "floor") ?: "floor"
                             )
+                            
                             if (plugin.config.getBoolean("Debug.enabled")) {
-                                plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $processedCmd")
+                                plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $mathProcessed")
                             }
                             Bukkit.dispatchCommand(
                                 Bukkit.getConsoleSender(),
-                                processedCmd
+                                mathProcessed
                             )
                         } else {
-                            val cmd = parsedCommand.replace("%player%", key).replace("%damage%", value.toString())
+                            val replaced = parsedCommand.replace("%player%", key).replace("%damage%", value.toString())
+                            
+                            // Process math expressions
+                            val cmd = MathEvaluator.processCommand(
+                                replaced,
+                                player,
+                                plugin.config.getString("Math.rounding_mode", "floor") ?: "floor"
+                            )
+                            
                             if (plugin.config.getBoolean("Debug.enabled")) {
                                 plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $cmd")
                             }
@@ -410,19 +451,31 @@ class Events(private var plugin: Main) : Listener {
                         }
                         
                         if (PLACEHOLDERAPI_ENABLED) {
-                            val processedCmd = PlaceholderAPI.setBracketPlaceholders(
+                            val placeholderReplaced = parsedCommand.replace("%player%", key).replace("%damage%", value.toString())
+                            val processedCmd = PlaceholderAPI.setBracketPlaceholders(player, placeholderReplaced)
+                            
+                            val mathProcessed = MathEvaluator.processCommand(
+                                processedCmd,
                                 player,
-                                parsedCommand.replace("%player%", key).replace("%damage%", value.toString())
+                                plugin.config.getString("Math.rounding_mode", "floor") ?: "floor"
                             )
+                            
                             if (plugin.config.getBoolean("Debug.enabled")) {
-                                plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $processedCmd")
+                                plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $mathProcessed")
                             }
                             Bukkit.dispatchCommand(
                                 Bukkit.getConsoleSender(),
-                                processedCmd
+                                mathProcessed
                             )
                         } else {
-                            val cmd = parsedCommand.replace("%player%", key).replace("%damage%", value.toString())
+                            val replaced = parsedCommand.replace("%player%", key).replace("%damage%", value.toString())
+                            
+                            val cmd = MathEvaluator.processCommand(
+                                replaced,
+                                player,
+                                plugin.config.getString("Math.rounding_mode", "floor") ?: "floor"
+                            )
+                            
                             if (plugin.config.getBoolean("Debug.enabled")) {
                                 plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $cmd")
                             }
@@ -479,19 +532,31 @@ class Events(private var plugin: Main) : Listener {
                         }
                         
                         if (PLACEHOLDERAPI_ENABLED) {
-                            val processedCmd = PlaceholderAPI.setBracketPlaceholders(
+                            val placeholderReplaced = parsedCommand.replace("%player%", key).replace("%damage%", value.toString())
+                            val processedCmd = PlaceholderAPI.setBracketPlaceholders(player, placeholderReplaced)
+                            
+                            val mathProcessed = MathEvaluator.processCommand(
+                                processedCmd,
                                 player,
-                                parsedCommand.replace("%player%", key).replace("%damage%", value.toString())
+                                plugin.config.getString("Math.rounding_mode", "floor") ?: "floor"
                             )
+                            
                             if (plugin.config.getBoolean("Debug.enabled")) {
-                                plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $processedCmd")
+                                plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $mathProcessed")
                             }
                             Bukkit.dispatchCommand(
                                 Bukkit.getConsoleSender(),
-                                processedCmd
+                                mathProcessed
                             )
                         } else {
-                            val cmd = parsedCommand.replace("%player%", key).replace("%damage%", value.toString())
+                            val replaced = parsedCommand.replace("%player%", key).replace("%damage%", value.toString())
+                            
+                            val cmd = MathEvaluator.processCommand(
+                                replaced,
+                                player,
+                                plugin.config.getString("Math.rounding_mode", "floor") ?: "floor"
+                            )
+                            
                             if (plugin.config.getBoolean("Debug.enabled")) {
                                 plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $cmd")
                             }
@@ -518,19 +583,31 @@ class Events(private var plugin: Main) : Listener {
                         }
                         
                         if (PLACEHOLDERAPI_ENABLED) {
-                            val processedCmd = PlaceholderAPI.setBracketPlaceholders(
+                            val placeholderReplaced = parsedCommand.replace("%player%", key).replace("%damage%", value.toString())
+                            val processedCmd = PlaceholderAPI.setBracketPlaceholders(player, placeholderReplaced)
+                            
+                            val mathProcessed = MathEvaluator.processCommand(
+                                processedCmd,
                                 player,
-                                parsedCommand.replace("%player%", key).replace("%damage%", value.toString())
+                                plugin.config.getString("Math.rounding_mode", "floor") ?: "floor"
                             )
+                            
                             if (plugin.config.getBoolean("Debug.enabled")) {
-                                plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $processedCmd")
+                                plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $mathProcessed")
                             }
                             Bukkit.dispatchCommand(
                                 Bukkit.getConsoleSender(),
-                                processedCmd
+                                mathProcessed
                             )
                         } else {
-                            val cmd = parsedCommand.replace("%player%", key).replace("%damage%", value.toString())
+                            val replaced = parsedCommand.replace("%player%", key).replace("%damage%", value.toString())
+                            
+                            val cmd = MathEvaluator.processCommand(
+                                replaced,
+                                player,
+                                plugin.config.getString("Math.rounding_mode", "floor") ?: "floor"
+                            )
+                            
                             if (plugin.config.getBoolean("Debug.enabled")) {
                                 plugin.logger.info("[REWARDSYSTEM DEBUG] Plugin dispatched command: $cmd")
                             }

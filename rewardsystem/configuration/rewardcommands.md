@@ -60,8 +60,15 @@ This command calculates 2 times the player's island level plus 5, and gives that
 * Multiplication: `*`
 * Division: `/`
 * Modulo (remainder): `%`
-* Exponentiation: `**` or `^`
 * Parentheses usage: `(expression)`
+
+### Not Supported
+
+The following operations are no longer supported due to stability improvements:
+* Functions like `min()`, `max()`, `pow()`, and `round()`
+* Exponentiation: `**` or `^`
+
+Instead, use basic arithmetic expressions for similar functionality.
 
 ### Using Placeholders
 
@@ -71,21 +78,13 @@ Values from PlaceholderAPI are automatically converted to numbers. If a placehol
 give %player% diamond {math:3*%server.online%}
 ```
 
-### Rounding Modes
+### Error Handling
 
-There are four different rounding modes for decimal results:
+If an expression cannot be evaluated (due to invalid syntax, placeholder issues, etc.), the system will log a warning and:
+* For chance calculations: default to 50.0% chance
+* For item amounts: default to 1
 
-1. `floor`: Rounds down (2.8 → 2)
-2. `ceil`: Rounds up (2.1 → 3)
-3. `round`: Rounds to the nearest (2.4 → 2, 2.5 → 3)
-4. `none`: No rounding (2.33333 → 2.33333)
-
-You can set the rounding mode in the config.yml file as follows:
-
-```
-Math:
-  rounding_mode: "floor" # Options: "floor", "ceil", "round", "none"
-```
+This ensures that commands still execute even when mathematical expressions have issues.
 
 ### Examples
 
@@ -118,9 +117,27 @@ Just add % after expression. Example:
 give %player% dragon_egg 1 {math:(%damage%/1000)}%
 ```
 
+### Safe Alternatives for min/max Functions
+
+Instead of using `min()` and `max()` functions, consider these approaches:
+
+1. For minimum value caps:
+   ```
+   # Instead of: {math:min(90, %player_level%)}
+   # Use fixed amounts with appropriate chances
+   give %player% diamond 1 {math:(%player_level% / 2)}%
+   ```
+
+2. For maximum value caps:
+   ```
+   # Instead of: {math:max(5, %player_level%)}
+   # Ensure your expression naturally reaches your desired minimum
+   give %player% emerald {math:5 + (%player_level% / 10)}
+   ```
+
 ### Important Notes
 
-* If a mathematical expression is invalid (such as division by zero), the result will be 0
-* Make sure PlaceholderAPI is installed
-* Avoid overly complex expressions
-* Be aware of potential overflow issues when working with large numbers
+* If a mathematical expression is invalid, the plugin will use safe default values
+* Make sure PlaceholderAPI is installed for placeholder functionality
+* Keep expressions simple for better performance and reliability
+* Test your expressions thoroughly to ensure they produce expected results

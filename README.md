@@ -6,16 +6,16 @@
 <p>RewardSystem is a versatile Minecraft plugin designed to enhance server gameplay by providing customizable rewards when players defeat mobs. The plugin monitors player damage contributions to each mob and distributes rewards based on various configurable criteria.</p>
 
 # Features
-<p><br>Dynamic Reward System</p>: Customize rewards based on mob types, player participation, and damage dealt</p>
-<p><br>Mathematical Expressions</p>: Create complex probability-based rewards using mathematical expressions with player variables</p>
-<p><br>Multiple Reward Tiers</p>: Configure different reward tiers based on player participation and damage</p>
-<p><br>Special Last Hit Rewards</p>: Provide unique rewards to players who deliver the final blow</p>
-<p><br>World & Region Filtering</p>: Restrict rewards to specific worlds or regions using WorldGuard integration</p>
-<p><br>Custom Messages</p>: Configure detailed reward messages with color codes and formatting</p>
-<p><br>Minimum Damage Requirements</p>: Set minimum damage thresholds for reward eligibility</p>
-<p><br>Mob Name Filtering</p>: Trigger different rewards based on custom mob names</p>
-<p><br>PlaceholderAPI Support</p>: Utilize player placeholders in reward calculations and messages</p>
-<p><br>Debug Mode</p>: Comprehensive logging options for troubleshooting</p>
+<p><strong>Dynamic Reward System</strong>: Customize rewards based on mob types, player participation, and damage dealt</p>
+<p><strong>Mathematical Expression</strong>: Create complex probability-based rewards using mathematical expressions with player variables</p>
+<p><strong>Multiple Reward Tiers</strong>: Configure different reward tiers based on player participation and damage</p>
+<p><strong>Special Last Hit Rewards</strong>: Provide unique rewards to players who deliver the final blow</p>
+<p><strong>World & Region Filtering</strong>: Restrict rewards to specific worlds or regions using WorldGuard integration</p>
+<p><strong>Custom Messages</strong>: Configure detailed reward messages with color codes and formatting</p>
+<p><strong>Minimum Damage Requirements</strong>: Set minimum damage thresholds for reward eligibility</p>
+<p><strong>Mob Name Filtering</strong>: Trigger different rewards based on custom mob names</p>
+<p><strong>PlaceholderAPI Support</strong>: Utilize player placeholders in reward calculations and messages</p>
+<p><strong>Debug Mode</strong>: Comprehensive logging options for troubleshooting</p>
 
 # Installation
 <p>Download the latest release from GitHub or your preferred marketplace</p>

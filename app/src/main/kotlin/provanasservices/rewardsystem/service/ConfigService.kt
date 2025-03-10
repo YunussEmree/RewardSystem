@@ -295,18 +295,46 @@ object ConfigService {
         val normalRewards = mutableListOf<String>()
         val chanceRewards = mutableListOf<RewardMob.ChanceReward>()
         
+        LoggingService.info("======== PARSING CHANCE COMMANDS - Total ${commands.size} commands ========")
+        
         for (command in commands) {
-            LoggingService.info("Parsing command for chance: $command")
+            // Log original command with clear marking to make debugging easier
+            LoggingService.info("EXAMINING COMMAND: \"$command\"")
             
             try {
-                // Pattern 1: Simple percentage (e.g., "give %player% diamond 1 50.0%")
+                // ENHANCED CHECK: First check if command already looks like a chance command with more general patterns
+                if (command.contains("%") && (
+                    // Simple percentage at end
+                    command.trim().matches(Regex(".*\\s+\\d+\\.?\\d*%$")) ||
+                    // Math expression with percentage at end
+                    command.trim().matches(Regex(".*\\s+\\{math:.*?\\}%$")) ||
+                    // Math expression at end (assumed to be chance)
+                    command.trim().matches(Regex(".*\\s+\\{math:.*?\\}$"))
+                )) {
+                    LoggingService.info("INITIAL CHANCE COMMAND DETECTION: Command appears to contain a chance expression: \"$command\"")
+                }
+                
+                // Pattern 1A: Special check for Minecraft give commands with percentage
+                // Example: "give %player% minecraft:diamond 1 25.0%"
+                val minecraftGiveMatch = Regex("(give %player% \\S+ \\d+)\\s+(\\d+\\.?\\d*)%$").find(command)
+                if (minecraftGiveMatch != null) {
+                    val (baseCommand, percentValue) = minecraftGiveMatch.destructured
+                    val chance = percentValue.toDoubleOrNull()
+                    if (chance != null) {
+                        LoggingService.info("FOUND MINECRAFT COMMAND CHANCE: \"$baseCommand\" - Chance: $chance%")
+                        chanceRewards.add(RewardMob.ChanceReward(chance, command))
+                        continue
+                    }
+                }
+                
+                // Pattern 1B: Simple percentage at the end (e.g., "give %player% diamond 1 50.0%")
                 val simplePercentMatch = Regex("(.*?)\\s+(\\d+\\.?\\d*)%$").find(command)
                 if (simplePercentMatch != null) {
                     val (baseCommand, percentValue) = simplePercentMatch.destructured
                     val chance = percentValue.toDoubleOrNull()
                     if (chance != null) {
-                        LoggingService.info("Found simple chance reward: $baseCommand with chance $chance%")
-                        chanceRewards.add(RewardMob.ChanceReward(chance, baseCommand.trim()))
+                        LoggingService.info("FOUND PERCENTAGE CHANCE: \"$baseCommand\" - Chance: $chance%")
+                        chanceRewards.add(RewardMob.ChanceReward(chance, command))
                         continue
                     }
                 }
@@ -315,10 +343,10 @@ object ConfigService {
                 val mathPercentMatch = Regex("(.*?)\\s+\\{math:(.*?)\\}%$").find(command)
                 if (mathPercentMatch != null) {
                     val (baseCommand, mathExpression) = mathPercentMatch.destructured
-                    LoggingService.info("Found math-based chance reward: $baseCommand with expression: $mathExpression")
+                    LoggingService.info("FOUND MATH EXPRESSION CHANCE: \"$baseCommand\" - Expression: {math:$mathExpression}")
                     chanceRewards.add(RewardMob.ChanceReward(
                         chance = null,
-                        commands = baseCommand.trim(),
+                        commands = command,
                         chancePlaceholder = "{math:$mathExpression}"
                     ))
                     continue
@@ -328,12 +356,12 @@ object ConfigService {
                 val mathOnlyMatch = Regex("(.*?)\\s+\\{math:(.*?)\\}$").find(command)
                 if (mathOnlyMatch != null) {
                     val (baseCommand, mathExpression) = mathOnlyMatch.destructured
-                    LoggingService.info("Found math expression reward: $baseCommand with expression: $mathExpression")
+                    LoggingService.info("FOUND MATH EXPRESSION: \"$baseCommand\" - Expression: {math:$mathExpression}")
                     
                     // We assume this is a chance calculation
                     chanceRewards.add(RewardMob.ChanceReward(
                         chance = null,
-                        commands = baseCommand.trim(),
+                        commands = command,
                         chancePlaceholder = "{math:$mathExpression}"
                     ))
                     continue
@@ -344,44 +372,87 @@ object ConfigService {
                 val placeholderMatch = Regex("(.*?)\\s+%([^%]+)%$").find(command)
                 if (placeholderMatch != null) {
                     val (baseCommand, placeholder) = placeholderMatch.destructured
-                    LoggingService.info("Found placeholder at the end of command: $baseCommand with placeholder: %$placeholder%")
                     
-                    // Process each placeholder as a chance
-                    chanceRewards.add(RewardMob.ChanceReward(
-                        chance = null,
-                        commands = baseCommand.trim(),
-                        chancePlaceholder = "%$placeholder%"
-                    ))
+                    // Make sure we don't misinterpret commands with essential placeholders
+                    val isEssentialPlaceholder = placeholder.equals("player", ignoreCase = true) || 
+                                                 placeholder.equals("damage", ignoreCase = true) ||
+                                                 placeholder.equals("entity", ignoreCase = true) ||
+                                                 placeholder.equals("world", ignoreCase = true) ||
+                                                 placeholder.equals("position", ignoreCase = true)
+                                                 
+                    if (!isEssentialPlaceholder) {
+                        LoggingService.info("FOUND PLACEHOLDER CHANCE: \"$baseCommand\" - Placeholder: %$placeholder%")
+                        
+                        // Process each placeholder as a chance
+                        chanceRewards.add(RewardMob.ChanceReward(
+                            chance = null,
+                            commands = command,
+                            chancePlaceholder = "%$placeholder%"
+                        ))
+                        continue
+                    }
+                }
+                
+                // Pattern 5: Check for explicit chance-related placeholders anywhere in the command
+                // This handles cases where chance placeholders might not be at the end
+                if (command.contains("%chance") || command.contains("%probability") || 
+                    command.contains("{math:") || command.contains("chance=")) {
+                    LoggingService.info("FOUND POTENTIAL CHANCE INDICATOR in command: \"$command\"")
+                    
+                    // If the command contains a chance indicator but we couldn't parse it with other patterns,
+                    // we'll add it as a chance command with a default chance value
+                    // This is safer than treating it as a normal command
+                    LoggingService.warning("Command contains chance indicators but couldn't be parsed with standard patterns: \"$command\"")
+                    LoggingService.warning("Adding as chance command with 100% chance for safety - will be evaluated at runtime")
+                    
+                    chanceRewards.add(RewardMob.ChanceReward(100.0, command))
                     continue
                 }
                 
                 // If the command contains % but not at the end in a recognized pattern, check if it has a percentage like "50%" anywhere
                 if (command.contains("%")) {
+                    // Check if it's a format like "command parameter 25.5% parameter"
                     val generalPercentMatch = Regex("(.*?)\\s+(\\d+\\.?\\d*)%(?:\\s+|$)").find(command)
                     if (generalPercentMatch != null) {
                         val (baseCommand, percentValue) = generalPercentMatch.destructured
                         val chance = percentValue.toDoubleOrNull()
                         if (chance != null) {
-                            LoggingService.info("Found percentage in command: $baseCommand with chance $chance%")
-                            chanceRewards.add(RewardMob.ChanceReward(chance, baseCommand.trim()))
+                            LoggingService.info("FOUND GENERAL PERCENTAGE: \"$baseCommand\" - Chance: $chance%")
+                            chanceRewards.add(RewardMob.ChanceReward(chance, command))
                             continue
                         }
                     }
                     
                     // If no percentage found but contains %, assume it's a normal command with placeholders
-                    LoggingService.info("Command contains % but not in recognized chance format, treating as normal: $command")
+                    // Extra safety: check if it's a chance-like format we didn't catch
+                    if (command.matches(Regex(".*\\d+%.*")) || command.contains("chance")) {
+                        LoggingService.warning("POTENTIAL CHANCE COMMAND not matched by any pattern: \"$command\"")
+                        LoggingService.warning("If this is intended to be a chance command, please ensure it follows the correct format")
+                    }
+                    
+                    LoggingService.info("NORMAL COMMAND: Contains % but not in chance format: \"$command\"")
                 }
                 
                 // All other commands are processed as normal commands
-                LoggingService.info("No chance format detected, treating as normal command: $command")
+                LoggingService.info("NORMAL COMMAND: No chance format detected: \"$command\"")
                 normalRewards.add(command)
                 
             } catch (e: Exception) {
-                LoggingService.warning("Error parsing command for chance: $command - ${e.message}")
+                LoggingService.warning("ERROR PARSING COMMAND: \"$command\" - ${e.message}")
                 // If there's an error in parsing, treat it as a normal command
                 normalRewards.add(command)
             }
         }
+        
+        // Debug output for troubleshooting
+        LoggingService.info("CHANCE COMMAND PARSING COMPLETE: Found ${normalRewards.size} normal commands and ${chanceRewards.size} chance commands")
+        if (chanceRewards.isNotEmpty()) {
+            LoggingService.info("CHANCE COMMANDS FOUND:")
+            chanceRewards.forEachIndexed { index, reward ->
+                LoggingService.info("  ${index+1}. Command: \"${reward.commands}\", Chance: ${reward.chance ?: "dynamic"}, Placeholder: ${reward.chancePlaceholder ?: "none"}")
+            }
+        }
+        LoggingService.info("=======================================================")
         
         return Pair(normalRewards, chanceRewards)
     }

@@ -3,7 +3,10 @@
 ![Kotlin](https://img.shields.io/badge/kotlin-100%25-blue)
 
 # What is this plugin?
-<p>RewardSystem is a versatile Minecraft plugin designed to enhance server gameplay by providing customizable rewards when players defeat mobs. The plugin monitors player damage contributions to each mob and distributes rewards based on various configurable criteria.</p>
+<p>RewardSystem is a popular versatile Minecraft plugin designed to enhance server gameplay by providing customizable rewards when players defeat mobs. The plugin monitors player damage contributions to each mob and distributes rewards based on various configurable criteria.</p>
+
+# Wiki
+<p>For detailed informations, please refer to the our <a href="https://senyigityunusemres-organization.gitbook.io/rewardsystem/readme/updates">Gitbook Wiki</a>. </p>
 
 # Features
 <p><strong>Dynamic Reward System</strong>: Customize rewards based on mob types, player participation, and damage dealt</p>
@@ -17,20 +20,22 @@
 <p><strong>PlaceholderAPI Support</strong>: Utilize player placeholders in reward calculations and messages</p>
 <p><strong>Debug Mode</strong>: Comprehensive logging options for troubleshooting</p>
 
+# Buying and License
+<p>RewardSystem is popular and reliable source. This resource has <strong>+45 paid customers</strong>.</p>
+<p><strong>Marketplace</strong>: Available on select Minecraft plugin marketplaces:</p>
+<ul> 
+  <li><a href="https://builtbybit.com/resources/reward-system-works-with-custom-mobs.24629/?ref=discover">BuiltByBit</a></li>
+  <li><a href="https://polymart.org/resource/rewardsystem.4635">Polymart</a></li>
+</ul>
+
 # Installation
-<p>Download the latest release from GitHub or your preferred marketplace</p>
-<p>Place the JAR file in your server's plugins directory</p>
-<p>Restart your server</p>
-<p>Edit the configuration files in the plugins/RewardSystem directory to customize your reward system</p>
+<p>1. Download the latest release from GitHub or your preferred marketplace</p>
+<p>2. Place the JAR file in your server's plugins directory</p>
+<p>3. Restart your server</p>
+<p>4. Edit the configuration files in the plugins/RewardSystem directory to customize your reward system</p>
 
 # Configuration
 <p> The plugin uses a YAML-based configuration system that is highly customizable. Here's a basic example: <a href="https://github.com/YunussEmree/RewardSystem/blob/kotlin/app/src/main/resources/config.yml"> Example Config File</a>
-
-<p>For detailed configuration options, please refer to the <a href="https://senyigityunusemres-organization.gitbook.io/rewardsystem/readme/updates">Configuration Documentation</a>. </p>
-
-# Mathematical Expressions
-<p>RewardSystem supports mathematical expressions for dynamic reward calculations. You can use player-specific variables and basic arithmetic operations:</p>
-<p>For more information about mathematical expressions: <a href="https://github.com/YunussEmree/RewardSystem/blob/kotlin/app/src/main/resources/math_expressions.md">Mathematical Expressions Guide</a> </p>
 
 # Permissions
 <p>rewardsystem.admin.resetcooldown - Permission to use reset cooldown command</p>

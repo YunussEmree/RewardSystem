@@ -39,8 +39,16 @@ object PlaceholderService {
         }
         
         try {
+            // Make sure PlaceholderAPI is available before trying to use it
+            val placeholderPlugin = Bukkit.getPluginManager().getPlugin("PlaceholderAPI")
+            if (placeholderPlugin == null || !placeholderPlugin.isEnabled) {
+                LoggingService.warning("PlaceholderAPI plugin found but it's not enabled or not properly loaded")
+                return text
+            }
+            
             // Use PlaceholderAPI to process placeholders
-            return PlaceholderAPI.setPlaceholders(player, text)
+            val result = PlaceholderAPI.setPlaceholders(player, text)
+            return result ?: text  // Return original text if result is null
         } catch (e: Exception) {
             // Log error and return original text
             LoggingService.warning("Error setting placeholders: ${e.message}")
@@ -56,12 +64,20 @@ object PlaceholderService {
      * @return Processed text or original text in case of error
      */
     fun setBracketPlaceholders(player: Player, text: String): String {
+        if (!Main.PLACEHOLDERAPI_ENABLED) {
+            return text
+        }
+        
         return try {
-            if (isPlaceholderAPIEnabled()) {
-                PlaceholderAPI.setBracketPlaceholders(player, text)
-            } else {
-                text
+            // Make sure PlaceholderAPI is available before trying to use it
+            val placeholderPlugin = Bukkit.getPluginManager().getPlugin("PlaceholderAPI")
+            if (placeholderPlugin == null || !placeholderPlugin.isEnabled) {
+                LoggingService.warning("PlaceholderAPI plugin found but it's not enabled or not properly loaded")
+                return text
             }
+            
+            val result = PlaceholderAPI.setBracketPlaceholders(player, text)
+            return result ?: text  // Return original text if result is null
         } catch (e: Exception) {
             logError("Error processing bracket placeholders: ${e.message}")
             text

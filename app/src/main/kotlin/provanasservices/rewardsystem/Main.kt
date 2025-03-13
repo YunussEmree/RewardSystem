@@ -2,6 +2,7 @@ package provanasservices.rewardsystem
 
 import org.bukkit.Bukkit
 import org.bukkit.ChatColor
+import org.bukkit.entity.Player
 import org.bukkit.plugin.java.JavaPlugin
 import provanasservices.rewardsystem.Database.DbHelper
 import provanasservices.rewardsystem.Database.MysqlHelper
@@ -194,19 +195,34 @@ class Main : JavaPlugin() {
      * Checks for PlaceholderAPI and initializes integration if available.
      */
     private fun setupPlaceholderAPI() {
-        PLACEHOLDERAPI_ENABLED = try {
-            val isEnabled = server.pluginManager.isPluginEnabled("PlaceholderAPI")
+        try {
+            // First check if PlaceholderAPI plugin exists and is enabled
+            val placeholderPlugin = server.pluginManager.getPlugin("PlaceholderAPI")
             
-            if (isEnabled) {
+            if (placeholderPlugin != null && placeholderPlugin.isEnabled) {
                 LoggingService.info("${ChatColor.GREEN}PlaceholderAPI found and enabled!")
+                
+                // Verify that we can access essential PlaceholderAPI classes
+                try {
+                    val testClass = me.clip.placeholderapi.PlaceholderAPI::class.java
+                    val testMethod = testClass.getDeclaredMethod("setPlaceholders", Player::class.java, String::class.java)
+                    
+                    // If we get here, we can access PlaceholderAPI classes
+                    PLACEHOLDERAPI_ENABLED = true
+                    LoggingService.info("PlaceholderAPI integration verified and functional!")
+                } catch (e: Exception) {
+                    LoggingService.warning("PlaceholderAPI found but classes could not be accessed: ${e.message}")
+                    LoggingService.warning("Plugin version incompatibility likely. Placeholder functionality will be limited.")
+                    PLACEHOLDERAPI_ENABLED = false
+                }
             } else {
-                LoggingService.warning("PlaceholderAPI not found. Placeholder functionality will be limited.")
+                LoggingService.warning("PlaceholderAPI not found or not enabled. Placeholder functionality will be limited.")
+                PLACEHOLDERAPI_ENABLED = false
             }
-            
-            isEnabled
         } catch (e: Exception) {
             LoggingService.warning("Error checking for PlaceholderAPI: ${e.message}")
-            false
+            LoggingService.warning("Placeholder functionality will be limited.")
+            PLACEHOLDERAPI_ENABLED = false
         }
     }
     

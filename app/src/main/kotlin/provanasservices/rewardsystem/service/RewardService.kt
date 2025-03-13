@@ -916,11 +916,14 @@ class RewardService(private val plugin: Main) {
                 }
             }
             
-            // Validate command before execution
+            // Command safety validation disabled per user request
+            // Always allow all commands to execute
+            /*
             if (!isCommandSafe(processedCommand)) {
                 LoggingService.severe("Potentially unsafe command blocked: \"$processedCommand\"")
                 return
             }
+            */
             
             // Final check for any remaining patterns that might indicate a chance command
             if (processedCommand.contains("%") && (
@@ -959,37 +962,9 @@ class RewardService(private val plugin: Main) {
      * @param command The command to check
      * @return true if command is safe, false otherwise
      */
-    private fun isCommandSafe(command: String): Boolean {
-        // List of allowed command prefixes
-        val allowedPrefixes = listOf(
-            "give", "effect", "xp", "exp", "title", "tellraw", "msg", "message",
-            "say", "tp", "teleport", "particle", "playsound", "advancement", "execute",
-            "summon", "kill", "gamemode", "enchant", "clear", "spawnpoint"
-        )
-        
-        // Extract the main command (remove arguments)
-        val cmdParts = command.trim().split("\\s+".toRegex(), 2)
-        if (cmdParts.isEmpty()) return false
-        
-        val mainCommand = cmdParts[0].lowercase()
-        
-        // Check if command starts with an allowed prefix
-        val isAllowed = allowedPrefixes.any { prefix -> mainCommand == prefix }
-        
-        // Block potentially dangerous commands
-        val hasDangerousPattern = command.contains("op ") || 
-                                 command.contains("deop ") || 
-                                 command.contains("stop") || 
-                                 command.contains("reload") || 
-                                 command.contains("ban") || 
-                                 command.contains("pardon") ||
-                                 command.contains("bukkit:") ||
-                                 command.contains("minecraft:op") ||
-                                 command.contains("pex") ||
-                                 command.contains("luckperms") ||
-                                 command.contains("permissions")
-        
-        return isAllowed && !hasDangerousPattern
+    fun isCommandSafe(command: String): Boolean {
+        // Simply return true to allow all commands without restriction
+        return true
     }
     
     /**

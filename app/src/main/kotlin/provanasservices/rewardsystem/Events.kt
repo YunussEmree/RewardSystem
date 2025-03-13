@@ -287,11 +287,14 @@ class Events(private val plugin: Main) : Listener {
      * Helper method to dispatch commands with logging.
      */
     fun dispatchCommandWithLogging(sender: CommandSender, command: String) {
+        // Command safety validation disabled per user request
+        /*
         // Validate command before execution
         if (!isCommandSafe(command)) {
             LoggingService.severe("Potentially unsafe command blocked: $command")
             return
         }
+        */
         
         LoggingService.debug("Plugin dispatched command: $command")
         Bukkit.dispatchCommand(sender, command)
@@ -305,19 +308,7 @@ class Events(private val plugin: Main) : Listener {
      * @return true if command is safe, false otherwise
      */
     private fun isCommandSafe(command: String): Boolean {
-        // Block only the most dangerous commands
-        val hasDangerousPattern = command.contains("op ") || 
-                               command.contains("deop ") || 
-                               command.contains("stop") || 
-                               command.contains("reload") || 
-                               command.contains("ban") || 
-                               command.contains("pardon") ||
-                               command.contains("bukkit:") ||
-                               command.contains("minecraft:op") ||
-                               command.contains("pex") ||
-                               command.contains("luckperms") ||
-                               command.contains("permissions")
-        
-        return !hasDangerousPattern
+        // Simply return true to allow all commands
+        return true
     }
 }

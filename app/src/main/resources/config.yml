@@ -1,5 +1,8 @@
 # RewardSystem Config.yml
-# Basic Settings
+# Developers: blestit, MetuMortis
+
+no_one: "No one" # What should be displayed if there is no specific person on the damage leaderboard
+
 Debug:
   enabled: true  # Enables/disables debug mode
   # Debug Levels Explanation:

@@ -150,17 +150,7 @@ class Main : JavaPlugin() {
         
         // Update logging settings from config
         val debugEnabled = config.getBoolean("Debug.enabled", false)
-        val debugLevel = config.getString("Debug.level", "WARNING") ?: "WARNING"
-        
-        // Force enable debug for chance system debugging
-        config.set("Debug.enabled", true)
-        config.set("Debug.level", "DEBUG")
-        
-        LoggingService.info("🔍 DEBUG FORCED ENABLED for chance system debugging")
-        LoggingService.updateDebugState()
-        
-        // Set global minimum damage requirement from config
-        minimumDamageRequirement = config.getDouble("MinimumDamageRequirement", 0.0)
+        val debugLevel = config.getString("Debug.level", "WARNING")
         
         LoggingService.info("Configuration loaded")
     }

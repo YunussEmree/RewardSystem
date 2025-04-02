@@ -110,7 +110,9 @@ class Events(private val plugin: Main) : Listener {
             }
             
             // Enhanced debugging
-            LoggingService.info("Entity death event: ${entity.type.name} (${entity.name}) with UUID $entityUUID")
+                LoggingService.info("Entity death event: ${entity.type.name} (${entity.name}) with UUID $entityUUID")
+
+
             
             // Get all reward configurations
             val rewardConfigs = Main.rewardsFromConfig
@@ -118,8 +120,7 @@ class Events(private val plugin: Main) : Listener {
                 LoggingService.info("No reward configurations found")
                 return
             }
-            
-            // 3. Performance optimization: Throttling for high frequency mob deaths
+
             val currentTime = System.currentTimeMillis()
             val lastProcessTime = Main.lastRewardProcessTime
             val throttleInterval = Main.getInstance().config.getLong("ThrottleInterval", 0)
@@ -142,13 +143,13 @@ class Events(private val plugin: Main) : Listener {
             var matchFound = false
             rewardConfigs.values.forEach { reward ->
                 // Skip if entity type doesn't match (only if type is specified)
-                if (reward.type != null && !reward.type!!.isEmpty() && !reward.typeEquals(entity.type.name)) {
+                if (reward.type != null && reward.type!!.isNotEmpty() && !reward.typeEquals(entity.type.name)) {
                     LoggingService.debug("Entity type ${entity.type.name} doesn't match reward ${reward.id}")
                     return@forEach
                 }
                 
                 // Name check if configured
-                if (reward.name != null && !reward.name!!.isEmpty() && !reward.nameEquals(entity.name)) {
+                if (reward.name != null && reward.name!!.isNotEmpty() && !reward.nameEquals(entity.name)) {
                     LoggingService.debug("Entity name '${entity.name}' doesn't match reward ${reward.id} name: ${reward.name}")
                     return@forEach
                 }
@@ -266,7 +267,7 @@ class Events(private val plugin: Main) : Listener {
             val name = entity.name
             
             damager.sendMessage("§a§l-------[REWARD SYSTEM DEBUG MESSAGE]-------")
-            damager.sendMessage(ChatColor.AQUA.toString() + "if you wont see this message, you should set debug: false in config.yml")
+            damager.sendMessage(ChatColor.AQUA.toString() + "if you wont see this message, you should set Debug.enabled: false in config.yml")
             damager.sendMessage(ChatColor.AQUA.toString() + " ")
             damager.sendMessage(ChatColor.BLUE.toString() + "Mob world: " + world)
             damager.sendMessage(ChatColor.BLUE.toString() + "Mob type: " + type)

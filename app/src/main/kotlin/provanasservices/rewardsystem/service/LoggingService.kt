@@ -1,6 +1,5 @@
 package provanasservices.rewardsystem.service
 
-import org.bukkit.Bukkit
 import org.bukkit.ChatColor
 import org.bukkit.plugin.java.JavaPlugin
 import java.util.logging.Level
@@ -47,6 +46,9 @@ object LoggingService {
      * @param message The message to log
      */
     fun info(message: String) {
+        if(!debugEnabled) {
+            return
+        }
         logger.info(message)
     }
     
@@ -56,6 +58,9 @@ object LoggingService {
      * @param message The warning message to log
      */
     fun warning(message: String) {
+        if(!debugEnabled) {
+            return
+        }
         logger.warning(message)
     }
     
@@ -65,6 +70,9 @@ object LoggingService {
      * @param message The error message to log
      */
     fun severe(message: String) {
+        if(!debugEnabled) {
+            return
+        }
         logger.severe(message)
     }
     
@@ -94,6 +102,7 @@ object LoggingService {
      * @param message The debug warning message to log
      */
     fun debugWarning(message: String) {
+
         if (debugEnabled) {
             logger.warning("[DEBUG] $message")
         }
@@ -106,6 +115,9 @@ object LoggingService {
      * @param message The message to log
      */
     fun log(level: Level, message: String) {
+        if(!debugEnabled) {
+            return
+        }
         logger.log(level, message)
     }
     

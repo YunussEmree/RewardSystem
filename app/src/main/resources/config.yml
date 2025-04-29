@@ -1,19 +1,16 @@
 # RewardSystem Config.yml
-# Developers: blestit, MetuMortis
-
-no_one: "No one" # What should be displayed if there is no specific person on the damage leaderboard
-
+# Basic Settings
 Debug:
   enabled: true  # Enables/disables debug mode
   # Debug Levels Explanation:
   # DEBUG: Most detailed log level. Shows all messages and is useful for troubleshooting.
   #        Logs all operations, reward calculations, and results of mathematical expressions.
   #        Use only when troubleshooting as it may impact performance during normal operation.
-  #        Recommended when reporting issues. 
+  #        Recommended when reporting issues.
   #
   # INFO: Standard log level. Shows important operations and statuses.
   #       Provides information about reward distributions, mathematical calculation results,
-  #       and important events. 
+  #       and important events.
   #
   # WARNING: Shows only warnings and errors.
   #          Logs errors in mathematical expressions, invalid commands, and potential issues.
@@ -23,7 +20,7 @@ Debug:
   #         Provides information about database connection errors, critical operation failures,
   #         and issues that prevent the plugin from functioning properly.
   #         Use when minimal logging information is desired.
-  level: WARNING    # Available levels: DEBUG, INFO, WARNING, SEVERE
+  level: DEBUG    # Available levels: DEBUG, INFO, WARNING, SEVERE
 
 # Database Settings
 Database:
@@ -66,7 +63,7 @@ MinimumDamageRequirement: 5.0  # Global minimum damage requirement
 Rewards:
   zombie:
     id: zombie_reward         # Unique ID for the reward. Every id must be unique. (required)
-    type: "ZOMBIE"              # The entity type to match (required).  "" -> no check
+    type: "ZOMBIE"            # The entity type to match (required).  "" -> no check
     name: "Rotting Zombie"    # Custom name to match (required). "" -> no check
     enabledWorld: "world"     # World to enable rewards in (required). "" -> no check
     enabledRegion: ""         # Region to enable rewards in (required). "" -> no check
@@ -80,24 +77,23 @@ Rewards:
     allRewards: # Rewards for all players / participant rewards
       - "give %player% minecraft:coal 5"
       - "title %player% title {\"text\":\"Zombie Slain!\",\"color\":\"green\"}" # Simple chance reward (50% chance)
-      - "give %player% minecraft:diamond 1 50.0%"
+      - "give %player% minecraft:diamond %server_online%"
       - "give %player% minecraft:emerald 2 {math:20 + (%player_level% / 10)}%" # Math expression-based chance (20% + level/10)
 
     rewards: # Rewards for specific player ranks
       1:
-        - "give %player% minecraft:diamond 3"
         - "give %player% minecraft:golden_apple 1"
-        - "give %player% minecraft:netherite_ingot 1 {math:10 + (%player_level% / 100)}%" 
+        - "give %player% minecraft:netherite_ingot 1 {math:max(10, 90 - (%player_level% * 10))}%" # Math chance example: 90% chance minus 10% per level, minimum 10%
+        - "give %player% minecraft:egg 1 0.1%"
+        - "give %player% minecraft:tnt 99.0%"
       2:
         - "give %player% minecraft:iron_ingot 5"
-        - "give %player% minecraft:diamond 1 25.0%" # Simple chance reward (25% chance)
       3:
         - "give %player% minecraft:iron_ingot 2"
 
     lastHitRewards: # Rewards for killer player
       - "give %player% minecraft:experience_bottle 5"
       - "effect give %player% minecraft:regeneration 10 1"
-      - "give %player% minecraft:diamond 3 {math:%player_level% * 5}%" # Last-hit bonus with math chance (level*5 percent)
 
     rewardMessages: # Reward messages when mob is killed
       - "&7▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃"
@@ -122,21 +118,21 @@ Rewards:
     allRewards:
       - "give %player% minecraft:bone 5"
       - "give %player% minecraft:arrow 10"
-      - "give %player% minecraft:enchanted_book 1 {math:90 * (%player_level% / 100)}%"
+      - "give %player% minecraft:enchanted_book 1 {math:min(90, pow(%player_level%, 2))}%" # Math-based chance: Level squared % (high level = higher chance)
     rewards:
       1:
         - "give %player% minecraft:bow 1"
-        - "xp give %player% {math:50 + (%player_level% * 5)}"
+        - "xp give %player% {math:50 + (%player_level% * 5)}" # Reward with mathematical placeholders
       2:
         - "give %player% minecraft:bone_meal 5"
-        - "give %player% minecraft:bow{Enchantments:[{id:\"minecraft:power\",lvl:3}]} 1 {math:50 + (%player_level% / 2)}%"
+        - "give %player% minecraft:bow{Enchantments:[{id:\"minecraft:power\",lvl:3}]} 1 {math:min(90, 50 + (%player_level% / 2))}%" # Complex math chance (50% + player_level/2, cap at 90%)
     rewardMessages:
       - "&8⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰"
       - "&f&l                 ☠ &7&l[SKELETON SLAYER] &f&l☠"
       - "&8The bones of a &f&lSkeletal Archer &8have been shattered by &f%killer%"
       - "&f➊ &b%top_name_1% &8- &c%top_damage_1% &4♥"
       - "&f➋ &b%top_name_2% &8- &c%top_damage_2% &4♥"
-      - "&f➌ &b%top_name_3% &8- &c%top_damage_3% &4♥" 
+      - "&f➌ &b%top_name_3% &8- &c%top_damage_3% &4♥"
       - "&7» &fYour damage: &c%personal_damage% &4♥"
       - "&8⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰ ⚰"
 
@@ -151,7 +147,7 @@ Rewards:
     allRewards:
       - "give %player% minecraft:gunpowder 3"
       - "give %player% minecraft:gunpowder {math:round((%player_level% / 10) + 1)}" # Dynamic amount with math expression
-      - "give %player% minecraft:tnt 1 {math:(%personal_damage% / 5) + 10}%"
+      - "give %player% minecraft:tnt 1 {math:min(50, (%personal_damage% / 5) + 10)}%" # Math chance based on player damage
     rewardMessages:
       - "&8⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛&a&l✹ &2&lBOOM AVOIDED &a&l✹ &8⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛"
       - "&a&l                       ⚡ &2&l[CREEPER DEFUSED] &a&l⚡"
@@ -173,8 +169,8 @@ Rewards:
     allRewards:
       - "give %player% minecraft:string 4"
       - "give %player% minecraft:spider_eye 1"
-      - "give %player% minecraft:string {math:round(%player_level% / 5) + 2}"
-      - "give %player% minecraft:cobweb 2 {math:(%personal_damage% / 10) + 20}%"
+      - "give %player% minecraft:string {math:round(%player_level% / 5) + 2}" # Direct command with math expression
+      - "give %player% minecraft:cobweb 2 {math:min(80, (%personal_damage% / 10) + 20)}%" # Math chance reward (higher chance for players with higher damage)
     rewardMessages:
       - "&8╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲"
       - "&8&l         //\\\\╱╲//\\\\╱╲ &c&l[SPIDER EXTERMINATED] &8&l╱╲//\\\\╱╲//\\\\"
@@ -197,7 +193,7 @@ Rewards:
       - "give %player% minecraft:glass_bottle 2"
       - "give %player% minecraft:glowstone_dust 2"
       - "give %player% minecraft:redstone 2"
-      - "give %player% minecraft:potion{Potion:\"minecraft:healing\"} {math:1 + (%player_level% / 20)}" 
+      - "give %player% minecraft:potion{Potion:\"minecraft:healing\"} {math:round(1 + (%player_level% / 20))}" # Math expression to determine potion amount based on level
     rewardMessages:
       - "&5⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁⌁"
       - "&5              ✦&d✧&5✦ &d&l[WITCH HUNT] &5✦&d✧&5✦"
@@ -224,13 +220,13 @@ Rewards:
         - "xp give %player% {math:1000 + (%personal_damage% * 2)}" # Advanced math calculation based on player damage
       2:
         - "give %player% minecraft:diamond 32"
-        - "give %player% minecraft:elytra 1 {math:(%player_level% - 10)}%"
+        - "give %player% minecraft:elytra 1 {math:min(50, max(5, %player_level% - 10))}%" # Complex chance reward with multiple factors
       3:
         - "give %player% minecraft:diamond 16"
-        - "give %player% minecraft:dragon_breath 5 {math:60 - (%player_level% * 2)}%" 
+        - "give %player% minecraft:dragon_breath 5 {math:60 - (%player_level% * 2)}%" # Chance reward with level scaling
     lastHitRewards:
       - "give %player% minecraft:dragon_head 1"
-      - "give %player% minecraft:end_crystal 4 {math:%personal_damage% / 5}%"
+      - "give %player% minecraft:end_crystal 4 {math:min(100, %personal_damage% / 5)}%" # Special chance based on damage
     rewardMessages:
       - "&5&l▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂"
       - "&d&l                            ⚜ DRAGON SLAIN ⚜"
@@ -260,20 +256,20 @@ Rewards:
         - "give %player% minecraft:nether_star 1"
         - "give %player% minecraft:beacon 1"
         - "xp give %player% {math:500 + (%personal_damage% * 1.5) + (%player_level% * 10)}" # Dynamic XP reward based on damage and level
-        - "give %player% minecraft:nether_star 1 {math:(%personal_damage% / 20) + 5}%"
+        - "give %player% minecraft:nether_star 1 {math:min(25, (%personal_damage% / 20) + 5)}%" # Rare chance for additional reward
       2:
         - "give %player% minecraft:netherite_ingot 5"
-        - "give %player% minecraft:nether_star 1 {math:30 - %player_level%}%"
+        - "give %player% minecraft:nether_star 1 {math:min(15, max(1, 30 - %player_level%))}%" # Chance increases as level decreases (helping lower level players)
       3:
         - "give %player% minecraft:netherite_ingot 2"
         - "give %player% minecraft:soul_sand {math:16 + (%player_level% * 2)}" # Give soul sand based on level
     allRewards:
-      - "effect give %player% minecraft:regeneration {math:5 + (%player_level% / 5)} 2"
-      - "give %player% minecraft:golden_apple {math:1 + (%player_level% / 20)} 75.0%"
-      - "give %player% minecraft:wither_skeleton_skull 1 {math:5 + (%player_level% * 1.5)}%"
+      - "effect give %player% minecraft:regeneration {math:max(5, round(%player_level% / 5))} 2"
+      - "give %player% minecraft:golden_apple {math:round(1 + (%player_level% / 20))} 75.0%"
+      - "give %player% minecraft:wither_skeleton_skull 1 {math:min(45, max(5, %player_level% * 1.5))}%"
     lastHitRewards:
       - "give %player% minecraft:wither_skeleton_skull 3"
-      - "give %player% minecraft:enchanted_golden_apple 1 {math:%personal_damage% / 2}%"
+      - "give %player% minecraft:enchanted_golden_apple 1 {math:min(100, %personal_damage% / 2)}%"
     rewardMessages:
       - "&0&l☠ &8&l☣ &0&l☠ &8&l[WITHER DEFEATED] &0&l☠ &8&l☣ &0&l☠"
       - "&8The &0&lWITHER &8has been vanquished by the legendary &f%killer%&8!"
@@ -296,7 +292,7 @@ Rewards:
     allRewards:
       - "give %player% minecraft:feather 3"
       - "give %player% minecraft:egg 1"
-      - "give %player% minecraft:feather {math:(%player_level% / 10) + 1} 50.0%"
+      - "give %player% minecraft:feather {math:round(%player_level% / 10) + 1} 50.0%" # Simple math expression for feather count based on level
     rewardMessages:
       - "&e&l≈≈≈ &f&l[CHICKEN HUNT] &e&l≈≈≈"
       - "&7You caught a &echicken &7and earned &f3 feathers&7!"

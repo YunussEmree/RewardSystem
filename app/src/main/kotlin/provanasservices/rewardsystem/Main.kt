@@ -191,23 +191,13 @@ class Main : JavaPlugin() {
             
             if (placeholderPlugin != null && placeholderPlugin.isEnabled) {
                 LoggingService.info("${ChatColor.GREEN}PlaceholderAPI found and enabled!")
-                
-                // Verify that we can access essential PlaceholderAPI classes
-                try {
-                    val testClass = me.clip.placeholderapi.PlaceholderAPI::class.java
-                    val testMethod = testClass.getDeclaredMethod("setPlaceholders", Player::class.java, String::class.java)
-                    
-                    // If we get here, we can access PlaceholderAPI classes
-                    PLACEHOLDERAPI_ENABLED = true
-                    LoggingService.info("PlaceholderAPI integration verified and functional!")
-                } catch (e: Exception) {
-                    LoggingService.warning("PlaceholderAPI found but classes could not be accessed: ${e.message}")
-                    LoggingService.warning("Plugin version incompatibility likely. Placeholder functionality will be limited.")
-                    PLACEHOLDERAPI_ENABLED = false
-                }
+                // Always enable our custom placeholder service regardless of PlaceholderAPI's state
+                PLACEHOLDERAPI_ENABLED = true
+                LoggingService.info("Custom placeholder functionality enabled!")
             } else {
-                LoggingService.warning("PlaceholderAPI not found or not enabled. Placeholder functionality will be limited.")
-                PLACEHOLDERAPI_ENABLED = false
+                LoggingService.info("PlaceholderAPI not found. Using built-in placeholder handling.")
+                // Even if PlaceholderAPI isn't available, we can still use our own placeholder service
+                PLACEHOLDERAPI_ENABLED = true 
             }
         } catch (e: Exception) {
             LoggingService.warning("Error checking for PlaceholderAPI: ${e.message}")
@@ -327,8 +317,8 @@ class Main : JavaPlugin() {
         /** Minimum damage requirement for rewards */
         var minimumDamageRequirement: Double = 0.0
         
-        /** Whether PlaceholderAPI is installed and enabled */
-        var PLACEHOLDERAPI_ENABLED = false
+        /** Whether custom placeholder service is enabled */
+        var PLACEHOLDERAPI_ENABLED = true
         
         /** Map of reward configurations by ID */
         @JvmField

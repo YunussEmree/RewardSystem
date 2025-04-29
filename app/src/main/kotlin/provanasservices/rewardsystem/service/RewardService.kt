@@ -265,7 +265,7 @@ class RewardService(private val plugin: Main) {
             // Execute regular commands
             regularCommands.forEach { command ->
                 LoggingService.debug("Executing regular 'all' reward for player ${player.name}")
-                executeCommand(command, player, damage, entity)
+                executeCommand(player, command, damage, entity)
             }
             
             // Combine manually added chance commands with configured ones
@@ -310,8 +310,8 @@ class RewardService(private val plugin: Main) {
             reward.rewards[rank]?.forEach { command ->
                 if (isLikelyChanceCommand(command)) {
                     LoggingService.warning("Found command in position $rank rewards that appears to be a chance command: \"$command\"")
-                    LoggingService.warning("Routing it through the chance system with 100% probability for safety")
-                    chanceCommands.add(RewardMob.ChanceReward(100.0, command))
+                    // Remove routing through chance system with 100% probability
+                    regularCommands.add(command)
                 } else {
                     regularCommands.add(command)
                 }
@@ -320,7 +320,7 @@ class RewardService(private val plugin: Main) {
             // Execute regular commands
             regularCommands.forEach { command ->
                 LoggingService.debug("Executing regular position reward for player ${player.name} at rank $rank")
-                executeCommand(command, player, damage, entity)
+                executeCommand(player, command, damage, entity)
             }
             
             // Process last hit rewards (if configured)
@@ -334,8 +334,8 @@ class RewardService(private val plugin: Main) {
                 reward.lastHitRewards?.forEach { command ->
                     if (isLikelyChanceCommand(command)) {
                         LoggingService.warning("Found last hit command that appears to be a chance command: \"$command\"")
-                        LoggingService.warning("Routing it through the chance system with 100% probability for safety")
-                        chanceLastHitCommands.add(RewardMob.ChanceReward(100.0, command))
+                        // Remove routing through chance system with 100% probability
+                        regularLastHitCommands.add(command)
                     } else {
                         regularLastHitCommands.add(command)
                     }
@@ -343,7 +343,7 @@ class RewardService(private val plugin: Main) {
                 
                 // Execute regular last hit commands
                 regularLastHitCommands.forEach { command ->
-                    executeCommand(command, player, damage, entity)
+                    executeCommand(player, command, damage, entity)
                 }
                 
                 // Process chance last hit commands
@@ -382,10 +382,19 @@ class RewardService(private val plugin: Main) {
             return true
         }
         
-        if (command.trim().matches(Regex(".*\\s+\\{math:.*?\\}%?$"))) {
-            // Math expression (with/without %), like "give %player% diamond 1 {math:max(10, %player_level%)}%"
-            LoggingService.debug("Command matches math expression pattern: $command")
-            return true
+        // Skip math expressions that are just arguments to commands
+        // Common pattern: "give %player% minecraft:diamond %server_online%"
+        if (command.contains("{math:")) {
+            // Only treat as chance command if there's a % immediately after the math expression
+            val mathExpressionWithPercentage = command.contains(Regex("\\{math:.*?\\}%"))
+            if (mathExpressionWithPercentage) {
+                LoggingService.debug("Command contains math expression with percentage: $command")
+                return true
+            } else {
+                // This is likely a math expression used as a command argument, not a chance command
+                LoggingService.debug("Command contains math expression without percentage (regular command): $command")
+                return false
+            }
         }
         
         if (command.contains("%chance") || command.contains("%probability%")) {
@@ -407,7 +416,9 @@ class RewardService(private val plugin: Main) {
                                                command.endsWith("%damage%") ||
                                                command.endsWith("%entity%") ||
                                                command.endsWith("%world%") ||
-                                               command.endsWith("%position%")
+                                               command.endsWith("%position%") ||
+                                               command.endsWith("%server_online%") ||
+                                               command.endsWith("%player_level%")
                                                
             if (!endsWithEssentialPlaceholder) {
                 LoggingService.debug("Command ends with non-essential placeholder (likely chance): $command")
@@ -447,7 +458,11 @@ class RewardService(private val plugin: Main) {
                 
                 // Check for math expressions in the command and evaluate them for this specific player
                 if (originalCommand.contains("{math:")) {
+                    LoggingService.debug("▶ Command contains a math expression")
+                    
+                    // Look for the math pattern with percentage
                     val mathPatternWithPercent = Regex("\\{math:(.*?)\\}%").find(originalCommand)
+                    // Also look for math pattern without percentage
                     val mathPatternWithoutPercent = Regex("\\{math:(.*?)\\}(?!%)").find(originalCommand)
                     
                     if (mathPatternWithPercent != null || mathPatternWithoutPercent != null) {
@@ -455,110 +470,51 @@ class RewardService(private val plugin: Main) {
                         
                         if (mathExpression != null) {
                             LoggingService.debug("▶ Found math expression in command: {math:$mathExpression}")
+                            LoggingService.debug("▶ Beginning evaluation of math expression for player ${player.name}")
                             
                             try {
                                 // First, replace PlaceholderAPI placeholders with actual values
                                 var processedExpression = mathExpression
                                 
-                                // Replace %player_level% with actual value using PlaceholderAPI
-                                if (Main.PLACEHOLDERAPI_ENABLED) {
-                                    processedExpression = PlaceholderService.setPlaceholders(player, processedExpression)
-                                    LoggingService.debug("▶ Expression after PlaceholderAPI processing: $processedExpression")
-                                } else {
-                                    // If PlaceholderAPI not available, try to extract common placeholders manually
-                                    // For example, if we know %player_level% is common:
-                                    if (processedExpression.contains("%player_level%")) {
-                                        val level = player.level
-                                        processedExpression = processedExpression.replace("%player_level%", level.toString())
-                                        LoggingService.debug("▶ Manually replaced %player_level% with $level")
-                                    }
-                                }
+                                // Pre-process any player placeholders
+                                LoggingService.debug("▶ Processing player placeholders in expression: $processedExpression")
+                                processedExpression = PlaceholderService.setPlaceholders(player, processedExpression)
+                                LoggingService.debug("▶ Expression after placeholder processing: $processedExpression")
                                 
-                                // Safety check: Make sure all placeholders are replaced
-                                if (processedExpression.contains("%player_") || processedExpression.contains("%p_")) {
-                                    LoggingService.debug("⚠ Unprocessed placeholders in expression: $processedExpression")
-                                    LoggingService.debug("▶ Will try to replace common placeholders manually")
-                                    
-                                    // Try some more common replacements
+                                // Safety check: Replace any remaining unprocessed placeholders with default values
+                                if (processedExpression.contains("%")) {
+                                    LoggingService.debug("⚠ Expression still contains % placeholders: $processedExpression")
+                                    // Handle common placeholders manually with defaults
                                     processedExpression = processedExpression
-                                        .replace("%player_level%", player.level.toString())
-                                        .replace("%player_health%", player.health.toString())
-                                        .replace("%player_food%", player.foodLevel.toString())
-                                }
-                                
-                                // SAFETY: Directly handle common math expressions to avoid unauthorized function errors
-                                if (processedExpression.contains("max(") || processedExpression.contains("min(")) {
-                                    try {
-                                        // Handle max() function manually
-                                        val maxPattern = Regex("max\\((\\d+\\.?\\d*),\\s*(\\d+\\.?\\d*)\\)").find(processedExpression)
-                                        if (maxPattern != null) {
-                                            val val1 = maxPattern.groupValues[1].toDoubleOrNull() ?: 0.0
-                                            val val2 = maxPattern.groupValues[2].toDoubleOrNull() ?: 0.0
-                                            val maxResult = Math.max(val1, val2)
-                                            processedExpression = processedExpression.replace(maxPattern.value, maxResult.toString())
-                                            LoggingService.debug("▶ Manually evaluated max function: $maxResult")
-                                        }
-                                        
-                                        // Handle min() function manually
-                                        val minPattern = Regex("min\\((\\d+\\.?\\d*),\\s*(\\d+\\.?\\d*)\\)").find(processedExpression)
-                                        if (minPattern != null) {
-                                            val val1 = minPattern.groupValues[1].toDoubleOrNull() ?: 0.0
-                                            val val2 = minPattern.groupValues[2].toDoubleOrNull() ?: 0.0
-                                            val minResult = Math.min(val1, val2)
-                                            processedExpression = processedExpression.replace(minPattern.value, minResult.toString())
-                                            LoggingService.debug("▶ Manually evaluated min function: $minResult")
-                                        }
-                                    } catch (e: Exception) {
-                                        LoggingService.warning("⚠ Error handling math function: ${e.message}")
-                                    }
-                                }
-                                
-                                // Basic arithmetic for expressions like "20 + (%player_level% / 10)"
-                                var useArithmeticResult = false
-                                var arithmeticResult: Double? = null
-                                
-                                try {
-                                    // First check if the string is in a basic arithmetic form after placeholder replacement
-                                    if (processedExpression?.matches(Regex("[\\d\\.\\+\\-\\*\\/\\(\\)\\s]+")) == true) {
-                                        LoggingService.debug("▶ Expression is a basic arithmetic expression, evaluating directly")
-                                        // Evaluate using a simple built-in calculator approach
-                                        arithmeticResult = evaluateBasicArithmetic(processedExpression)
-                                        LoggingService.debug("▶ Arithmetic evaluation result: $arithmeticResult")
-                                        
-                                        // Convert to double and use this as chance
-                                        if (arithmeticResult != null) {
-                                            useArithmeticResult = true
-                                            chance = arithmeticResult
-                                            LoggingService.debug("▶ Player-specific chance calculated from arithmetic: $chance%")
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    LoggingService.warning("⚠ Error in basic arithmetic evaluation: ${e.message}")
-                                    // Continue to try MathEvaluator as fallback
-                                }
-                                
-                                // Skip MathEvaluator if we already have a result from arithmetic
-                                if (!useArithmeticResult) {
-                                    LoggingService.debug("▶ Final expression for evaluation: $processedExpression")
+                                        .replace(Regex("%player_level%|%level%"), player.level.toString())
+                                        .replace(Regex("%player_health%|%health%"), player.health.toString())
+                                        .replace(Regex("%player_food%|%food%"), player.foodLevel.toString())
+                                        .replace(Regex("%damage%"), damage.toString())
+                                        // Replace any remaining placeholders with 0
+                                        .replace(Regex("%[^%]+%"), "0")
                                     
-                                    // Now evaluate the processed expression
-                                    val mathResult = MathEvaluator.evaluateExpression(processedExpression ?: "", player)
-                                    LoggingService.debug("▶ Math expression evaluated to: $mathResult")
-                                    
-                                    // Convert to double
-                                    val calculatedChance = mathResult?.toDoubleOrNull()
-                                    if (calculatedChance != null) {
-                                        // Use this player-specific calculation instead of any default from earlier
-                                        chance = calculatedChance
-                                        LoggingService.debug("▶ Player-specific chance calculated from math expression: $chance%")
-                                    } else {
-                                        // If evaluation failed, use a safer default
-                                        chance = 50.0
-                                        LoggingService.warning("⚠ Could not convert result to number, using default 50% chance")
-                                    }
+                                    LoggingService.debug("▶ Expression after replacing remaining placeholders: $processedExpression")
+                                }
+                                
+                                // Now evaluate the processed expression with MathEvaluator
+                                LoggingService.debug("▶ Sending expression to MathEvaluator: $processedExpression")
+                                val mathResult = MathEvaluator.evaluateExpression(processedExpression, player)
+                                LoggingService.debug("▶ Math expression evaluated to: $mathResult")
+                                
+                                // Convert to double
+                                val calculatedChance = mathResult.toDoubleOrNull()
+                                if (calculatedChance != null) {
+                                    // Use this player-specific calculation instead of any default from earlier
+                                    chance = calculatedChance
+                                    LoggingService.debug("▶ Player-specific chance calculated from math expression: $chance%")
+                                } else {
+                                    // If evaluation failed, use a safer default
+                                    chance = 50.0
+                                    LoggingService.warning("⚠ Could not convert result to number, using default 50% chance")
                                 }
                             } catch (e: Exception) {
                                 LoggingService.warning("⚠ Error evaluating math expression for player ${player.name}: ${e.message}")
+                                LoggingService.warning("⚠ Stack trace: ${e.stackTraceToString()}")
                                 // Use a reasonable default instead of failing
                                 chance = 50.0
                                 LoggingService.debug("▶ Using default chance of 50% due to evaluation error")
@@ -587,9 +543,9 @@ class RewardService(private val plugin: Main) {
                             val expression = placeholder.substring(6, placeholder.length - 1)
                             LoggingService.debug("▶ Evaluating math expression: $expression")
                             
-                            // Replace placeholders - initially there may be placeholders like %player_level%
+                            // Replace placeholders with actual values using our service
                             val processedExpression = PlaceholderService.setPlaceholders(player, expression)
-                            LoggingService.debug("▶ Expression after placeholders: $processedExpression")
+                            LoggingService.debug("▶ Expression after placeholder processing: $processedExpression")
                             
                             // Calculate the mathematical expression
                             val result = MathEvaluator.evaluateExpression(processedExpression, player)
@@ -618,6 +574,7 @@ class RewardService(private val plugin: Main) {
                             }
                         } catch (e: Exception) {
                             LoggingService.warning("⚠ Error evaluating math expression: ${e.message}")
+                            LoggingService.warning("⚠ Stack trace: ${e.stackTraceToString()}")
                             chance = 0.0
                         }
                     } else {
@@ -641,6 +598,7 @@ class RewardService(private val plugin: Main) {
                             }
                         } catch (e: Exception) {
                             LoggingService.warning("⚠ Error processing placeholder: ${e.message}")
+                            LoggingService.warning("⚠ Stack trace: ${e.stackTraceToString()}")
                             chance = 0.0
                         }
                     }
@@ -663,7 +621,6 @@ class RewardService(private val plugin: Main) {
                 LoggingService.debug("Command: ${originalCommand}")
                 LoggingService.debug("Calculated chance: %$chance")
                 
-                // Don't try to set the seed for ThreadLocalRandom - it's not supported
                 // Perform the chance calculation - this is the core probability test
                 val shouldGive = shouldGiveChanceReward(chance)
                 
@@ -676,7 +633,7 @@ class RewardService(private val plugin: Main) {
                     // Only execute if the command has something after stripping
                     if (cleanCommand.isNotBlank()) {
                         LoggingService.debug("▶ Executing command: \"$cleanCommand\" (original: \"${chanceReward.commands}\")")
-                        executeCommand(cleanCommand, player, damage, entity)
+                        executeCommand(player, cleanCommand, damage, entity)
                     } else {
                         LoggingService.warning("⚠ Command is empty after stripping chance expressions! Original: \"${chanceReward.commands}\"")
                     }
@@ -687,7 +644,7 @@ class RewardService(private val plugin: Main) {
                 }
             } catch (e: Exception) {
                 LoggingService.severe("⚠ Error processing chance reward: ${e.message}")
-                e.printStackTrace()
+                LoggingService.severe("⚠ Stack trace: ${e.stackTraceToString()}")
             }
         }
         
@@ -819,139 +776,63 @@ class RewardService(private val plugin: Main) {
     /**
      * Executes a command with placeholders.
      *
-     * @param command The command to execute
      * @param player The player context
+     * @param command The command to execute
      * @param damage Damage dealt by player
      * @param entity The entity that was killed
      */
-    private fun executeCommand(
-        command: String,
-        player: Player,
-        damage: Double,
-        entity: LivingEntity
-    ) {
+    private fun executeCommand(player: Player, command: String, damage: Double, entity: LivingEntity): Boolean {
         try {
-            if (command.isBlank()) {
-                LoggingService.warning("Attempted to execute a blank command")
-                return
-            }
-            
-            // Log the original command
             LoggingService.info("Starting command execution: \"$command\"")
             
-            // COMPREHENSIVE CHANCE COMMAND DETECTION
-            // If this is a chance command, it should only be called after a shouldGiveChanceReward check
-            // Check for various patterns that indicate this is a chance command
-            val isChanceCommand = command.trim().matches(Regex(".*\\s+\\d+\\.?\\d*%$")) ||                   // Simple percentage at end
-                command.trim().matches(Regex(".*\\s+\\{math:.*?\\}%$")) ||                 // Math with percentage at end
-                command.trim().matches(Regex(".*\\s+\\{math:.*?\\}$")) ||                  // Math at end (assumed chance)
-                command.contains("%chance") || command.contains("%probability%") ||        // Chance-related placeholders
-                (command.trim().matches(Regex(".*\\s+%[^%]+%$")) && !command.contains("%player%")) // Trailing placeholder that's not %player%
+            // Process basic placeholders
+            var processedCommand = command.replace("%player%", player.name)
+                .replace("%damage%", damage.toString())
+                .replace("%entity%", entity.type.name.lowercase())
+            LoggingService.info("Command after basic placeholder processing: \"$processedCommand\"")
+            
+            // Handle any server and player-specific placeholders through PlaceholderService
+            processedCommand = PlaceholderService.setPlaceholders(player, processedCommand)
+            LoggingService.info("Command after PlaceholderService processing: \"$processedCommand\"")
+            
+            // Process math expressions with MathEvaluator
+            var finalCommand = processedCommand
+            if (processedCommand.contains("{math:")) {
+                LoggingService.info("Command contains math expression, processing with MathEvaluator")
+                finalCommand = MathEvaluator.processCommand(processedCommand, player, "round") ?: processedCommand
+                LoggingService.info("Command after math processing: \"$finalCommand\"")
+            }
+            
+            // Now, before sending to Minecraft, we need to strip the chance expressions
+            // so the command is valid for Minecraft execution
+            var executableCommand = finalCommand
+            
+            // If the command contains a chance expression, we need to strip it for Minecraft execution
+            if (executableCommand.matches(Regex(".*\\s+\\d+\\.?\\d*%.*")) ||
+                executableCommand.contains("{math:") && executableCommand.contains("}%")) {
                 
-            if (isChanceCommand) {
-                LoggingService.severe("ATTENTION! Attempting to execute chance command directly: \"$command\"")
-                LoggingService.severe("This is a chance command and should be processed through processChanceRewards.")
-                LoggingService.severe("Command will be skipped and not executed in this way.")
-                return
-            }
-            
-            // Remove chance expressions and math expressions
-            val cleanCommand = stripChanceExpressions(command)
-            
-            if (cleanCommand.isBlank()) {
-                LoggingService.warning("Command is empty after chance expression stripping: \"$command\"")
-                return
-            }
-            
-            LoggingService.debug("Command after chance expression removal: \"$cleanCommand\"")
-            
-            // If the command has changed significantly, log a warning
-            if (cleanCommand.length < command.length * 0.5) {
-                LoggingService.warning("Command was significantly shortened after stripping chance expressions. Original: '$command', Cleaned: '$cleanCommand'")
+                // Keep the original for our logs
+                LoggingService.info("Command contains chance expression, preparing for Minecraft execution")
                 
-                // Extra safety check - if the stripped command is significantly different, check if this looks like a chance command
-                if (command.contains("%") && !cleanCommand.contains("%")) {
-                    LoggingService.warning("Command appears to be a chance command that slipped through detection")
-                    LoggingService.warning("Using the cleaned command, but this should be processed through the chance system")
-                }
+                // Strip chance expression before executing
+                executableCommand = stripChanceExpressions(executableCommand)
+                LoggingService.info("Command ready for Minecraft: \"$executableCommand\"")
             }
             
-            // Replace basic placeholders
-            var processedCommand = cleanCommand
-                .replace("%player%", player.name)
-                .replace("%damage%", damage.toInt().toString())
-                .replace("%entity%", entity.type.name)
-                .replace("%position%", entity.location.x.toInt().toString() + " " + 
-                                    entity.location.y.toInt() + " " + 
-                                    entity.location.z.toInt())
-                .replace("%world%", entity.world.name)
+            // Execute the command with Minecraft-compatible syntax
+            LoggingService.info("Executing command: \"$executableCommand\"")
+            val success = Bukkit.dispatchCommand(Bukkit.getConsoleSender(), executableCommand)
             
-            LoggingService.debug("Command after basic placeholder replacement: \"$processedCommand\"")
-            
-            // Use MathEvaluator to process any math expressions in the command
-            try {
-                val processedWithMath = MathEvaluator.processCommand(processedCommand, player, "round")
-                if (processedWithMath != null && processedWithMath.isNotBlank()) {
-                    processedCommand = processedWithMath
-                    LoggingService.debug("Command after math evaluation: \"$processedCommand\"")
-                } else {
-                    LoggingService.warning("MathEvaluator returned null or blank result, using original command")
-                }
-            } catch (e: Exception) {
-                LoggingService.warning("Error in math evaluation: ${e.message}, using original command")
+            if (success) {
+                LoggingService.info("Command executed successfully")
+            } else {
+                LoggingService.warning("Command execution failed")
             }
             
-            // Process with PlaceholderAPI if available
-            if (Main.PLACEHOLDERAPI_ENABLED) {
-                try {
-                    val processedWithPlaceholders = PlaceholderService.setPlaceholders(player, processedCommand)
-                    if (processedWithPlaceholders != null && processedWithPlaceholders.isNotBlank()) {
-                        processedCommand = processedWithPlaceholders
-                        LoggingService.debug("Command after PlaceholderAPI processing: \"$processedCommand\"")
-                    } else {
-                        LoggingService.warning("PlaceholderAPI returned null or blank result, using previous command")
-                    }
-                } catch (e: Exception) {
-                    LoggingService.warning("Error in PlaceholderAPI processing: ${e.message}, using previous command")
-                }
-            }
-            
-            // Command safety validation disabled per user request
-            // Always allow all commands to execute
-            /*
-            if (!isCommandSafe(processedCommand)) {
-                LoggingService.severe("Potentially unsafe command blocked: \"$processedCommand\"")
-                return
-            }
-            */
-            
-            // Final check for any remaining patterns that might indicate a chance command
-            if (processedCommand.contains("%") && (
-                processedCommand.matches(Regex(".*\\d+%.*")) || 
-                processedCommand.contains("chance") || 
-                processedCommand.contains("random")
-            )) {
-                LoggingService.warning("Potential chance-related patterns in processed command: \"$processedCommand\"")
-                LoggingService.warning("Proceeding with execution, but verify command configuration if this is unexpected")
-            }
-            
-            // Execute the command
-            try {
-                LoggingService.info("Executing command: \"$processedCommand\"")
-                val result = Bukkit.dispatchCommand(Bukkit.getConsoleSender(), processedCommand)
-                if (result) {
-                    LoggingService.info("Command executed successfully")
-                } else {
-                    LoggingService.warning("Command did not execute successfully. Command: \"$processedCommand\"")
-                }
-            } catch (e: Exception) {
-                LoggingService.warning("Error executing command: \"$processedCommand\" - ${e.message}")
-                // Show error details
-                LoggingService.warning("Error details: ${e.javaClass.name} - ${e.stackTrace.joinToString("\n  ")}")
-            }
+            return success
         } catch (e: Exception) {
-            LoggingService.severe("Error in executeCommand: ${e.message}")
-            e.printStackTrace()
+            LoggingService.severe("Error executing command: ${e.message}")
+            return false
         }
     }
     
@@ -994,14 +875,82 @@ class RewardService(private val plugin: Main) {
                 return command
             }
             
+            // SPECIFIC PATTERN: Handle "give %player% item amount {math:...}%" format
+            val specificMathPattern = Regex("(give %player% \\S+ \\d+)\\s+\\{math:.*?\\}%$").find(command)
+            if (specificMathPattern != null) {
+                val result = specificMathPattern.groupValues[1].trim()
+                LoggingService.debug("Matched give command with math expression and percentage: \"$result\"")
+                return result
+            }
+            
+            // NEW PATTERN: Handle "give %player% item amount percentage%" format
+            val giveWithAmountAndPercent = Regex("(give %player% \\S+ \\d+)\\s+\\d+\\.?\\d*%$").find(command)
+            if (giveWithAmountAndPercent != null) {
+                val result = giveWithAmountAndPercent.groupValues[1].trim()
+                LoggingService.debug("Matched give command with amount and percentage, keeping amount: \"$result\"")
+                return result
+            }
+            
+            // NEW PATTERN: Simple "give %player% minecraft:item 99.0%" without amount format
+            val simpleGivePercentMatch = Regex("(give %player% \\S+)\\s+\\d+\\.?\\d*%$").find(command)
+            if (simpleGivePercentMatch != null) {
+                val commandBase = simpleGivePercentMatch.groupValues[1].trim()
+                // Add default amount of 1 if it's a give command
+                val result = "$commandBase 1"
+                LoggingService.debug("Matched simple give with percentage, adding default amount: \"$result\"")
+                return result
+            }
+            
+            // Special handling for "give %player% minecraft:diamond %server_online% 50.0%" pattern
+            // We need to preserve placeholder that's not at the end
+            val specialGiveWithPlaceholderAndChance = Regex("(give %player% (?:minecraft:)?[\\w:]+) (%[^%]+%) (\\d+\\.?\\d*%)$").find(command)
+            if (specialGiveWithPlaceholderAndChance != null) {
+                val prefix = specialGiveWithPlaceholderAndChance.groupValues[1].trim()
+                val placeholder = specialGiveWithPlaceholderAndChance.groupValues[2].trim()
+                
+                // Return the command with the placeholder but without the chance percentage
+                val result = "$prefix $placeholder"
+                LoggingService.debug("Special placeholder+chance pattern found, preserving placeholder: \"$result\"")
+                return result
+            }
+            
+            // Another special pattern: "give %player% minecraft:diamond %server_online% 50.0%" 
+            // where minecraft:diamond is just one example, could be any item
+            val specialItemWithPlaceholderAndChance = Regex("(give %player% [\\w:]+) (%[^%]+%) (\\d+\\.?\\d*%)$").find(command)
+            if (specialItemWithPlaceholderAndChance != null) {
+                val prefix = specialItemWithPlaceholderAndChance.groupValues[1].trim()
+                val placeholder = specialItemWithPlaceholderAndChance.groupValues[2].trim()
+                
+                // Return the command with the placeholder but without the chance percentage
+                val result = "$prefix $placeholder"
+                LoggingService.debug("Special item with placeholder+chance pattern found: \"$result\"")
+                return result
+            }
+            
             // Try all patterns one by one
             var result: String? = null
             
+            // ENHANCED PATTERN: Handle math expression with percentage
+            val mathExpressionWithPercentPattern = Regex("(give %player% \\S+(?:\\s+\\d+)?)\\s+\\{math:.*?\\}%?$").find(command)
+            if (mathExpressionWithPercentPattern != null) {
+                result = mathExpressionWithPercentPattern.groupValues[1].trim()
+                // If no amount was specified, add "1" as the default amount
+                if (!result.matches(Regex(".*\\s+\\d+$"))) {
+                    result = "$result 1"
+                }
+                LoggingService.debug("Removed math expression with percentage, result: \"$result\"")
+                return result
+            }
+            
             // Pattern 0: New enhanced check for explicit minecraft commands with chance
-            val enhancedMinecraftMatch = Regex("(give %player% (?:minecraft:)?\\w+ \\d+)(?:\\s+.*?\\d+\\.?\\d*%|\\s+\\{math:.*?\\}%?)$").find(command)
+            val enhancedMinecraftMatch = Regex("(give %player% (?:minecraft:)?\\w+(?:\\s+\\d+)?)(?:\\s+.*?\\d+\\.?\\d*%|\\s+\\{math:.*?\\}%?)$").find(command)
             if (enhancedMinecraftMatch != null) {
                 result = enhancedMinecraftMatch.groupValues.getOrNull(1)?.trim()
                 if (result != null && result.isNotBlank()) {
+                    // Add default amount if none specified
+                    if (!result.matches(Regex(".*\\s+\\d+$"))) {
+                        result = "$result 1"
+                    }
                     LoggingService.debug("Enhanced minecraft command match, stripped to: \"$result\"")
                     return result
                 }
@@ -1017,11 +966,18 @@ class RewardService(private val plugin: Main) {
                 }
             }
             
-            // Pattern 2: Strip simple percentage chances: "give %player% diamond 1 50.0%"
+            // Pattern 2: Strip simple percentage chances at end: "command 50.0%"
             val percentageMatch = Regex("(.*?)\\s+\\d+\\.?\\d*%$").find(command)
             if (percentageMatch != null) {
                 result = percentageMatch.groupValues.getOrNull(1)?.trim()
                 if (result != null && result.isNotBlank()) {
+                    // Additional check to make sure we don't accidentally remove placeholders
+                    // If the result ends with % and also contains % somewhere else, it might be a placeholder
+                    if (result.endsWith("%") && result.indexOf("%") != result.lastIndexOf("%")) {
+                        LoggingService.debug("Command contains placeholder at the end, keeping original: \"$command\"")
+                        return command
+                    }
+                    
                     LoggingService.debug("Removed percentage chance expression, result: \"$result\"")
                     return result
                 }
@@ -1047,54 +1003,31 @@ class RewardService(private val plugin: Main) {
                 }
             }
             
-            // Pattern 5: Strip placeholder chances: "give %player% diamond 1 %placeholder%"
-            val placeholderMatch = Regex("(.*?)\\s+%([^%]+)%$").find(command)
-            if (placeholderMatch != null && placeholderMatch.groupValues.size >= 3) {
-                val baseCommand = placeholderMatch.groupValues.getOrNull(1)?.trim() ?: ""
-                val placeholder = placeholderMatch.groupValues.getOrNull(2) ?: ""
+            // If we can't confidently detect and remove a chance pattern, 
+            // return the original command (being conservative)
+            LoggingService.debug("No chance pattern confidently detected, keeping original command")
+            
+            // If no pattern matches exactly, we need to be more careful
+            // Check if the command ends with a percentage and has format "give %player% item %placeholder% chance%"
+            val parts = command.trim().split("\\s+".toRegex())
+            if (parts.size >= 5 && parts[0] == "give" && parts[1] == "%player%" && parts.last().endsWith("%")) {
+                // Check if the last part is actually a percentage
+                val lastPart = parts.last()
+                val percentValue = lastPart.substring(0, lastPart.length - 1).toDoubleOrNull()
                 
-                // Make sure we're not stripping %player% or other essential placeholders
-                if (placeholder.isNotBlank() && 
-                    !placeholder.equals("player", ignoreCase = true) && 
-                    !placeholder.equals("damage", ignoreCase = true) &&
-                    !placeholder.equals("entity", ignoreCase = true) &&
-                    !placeholder.equals("world", ignoreCase = true) &&
-                    !placeholder.equals("position", ignoreCase = true)) {
-                    
-                    if (baseCommand.isNotBlank()) {
-                        LoggingService.debug("Removed placeholder chance, result: \"$baseCommand\"")
-                        return baseCommand
-                    }
-                }
-            }
-            
-            // Pattern 6: More general pattern to catch percentages anywhere in the command
-            val generalPercentMatch = Regex("(.*?)\\s+\\d+\\.?\\d*%(?:\\s+|$)").find(command)
-            if (generalPercentMatch != null) {
-                result = generalPercentMatch.groupValues.getOrNull(1)?.trim()
-                if (result != null && result.isNotBlank()) {
-                    LoggingService.debug("Removed general percentage expression, result: \"$result\"")
+                if (percentValue != null && percentValue >= 0 && percentValue <= 100) {
+                    // This is a chance percentage at the end
+                    // Keep everything except the last part
+                    val result = parts.dropLast(1).joinToString(" ")
+                    LoggingService.debug("Complex command with percentage, processed to: \"$result\"")
                     return result
                 }
             }
             
-            // Pattern 7: Last resort - look for standard patterns for chance commands
-            if (command.contains("chance=") || command.contains("%chance") || command.contains("%probability%")) {
-                // Try to get the base command before the chance part
-                val parts = command.split("chance=", "%chance", "%probability%")
-                if (parts.isNotEmpty() && parts[0].isNotBlank() && parts[0].length > command.length / 2) {
-                    result = parts[0].trim()
-                    LoggingService.debug("Removed chance-related text using keyword detection, result: \"$result\"")
-                    return result
-                }
-            }
-            
-            // No chance expressions found, return original command
-            LoggingService.debug("No chance expressions found in command, using original command")
             return command
+            
         } catch (e: Exception) {
-            LoggingService.warning("Error while stripping chance expressions: ${e.message}")
-            // Return original command on error
+            LoggingService.warning("Error stripping chance expressions: ${e.message}")
             return command
         }
     }
@@ -1177,10 +1110,8 @@ class RewardService(private val plugin: Main) {
                     // Replace personal damage placeholder
                     var playerMessage = processedMessage.replace("%personal_damage%", playerDamage)
                     
-                    // Apply PlaceholderAPI if available
-                    if (Main.PLACEHOLDERAPI_ENABLED) {
-                        playerMessage = PlaceholderService.setPlaceholders(player, playerMessage)
-                    }
+                    // Apply our PlaceholderService
+                    playerMessage = PlaceholderService.setPlaceholders(player, playerMessage)
                     
                     // Translate color codes
                     playerMessage = Main.translateColors(playerMessage)
@@ -1191,8 +1122,8 @@ class RewardService(private val plugin: Main) {
             } else {
                 // No personal placeholders, can send the same message to everyone
                 
-                // Apply PlaceholderAPI if needed for other placeholders
-                if (Main.PLACEHOLDERAPI_ENABLED && Bukkit.getOnlinePlayers().isNotEmpty()) {
+                // Apply our PlaceholderService for other placeholders
+                if (Bukkit.getOnlinePlayers().isNotEmpty()) {
                     // Just use the first player for general placeholders
                     val anyPlayer = Bukkit.getOnlinePlayers().first()
                     processedMessage = PlaceholderService.setPlaceholders(anyPlayer, processedMessage)

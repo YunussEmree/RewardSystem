@@ -8,6 +8,7 @@ import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
 import org.bukkit.plugin.java.JavaPlugin
 import provanasservices.rewardsystem.Main
+import provanasservices.rewardsystem.util.LoggingUtility
 import java.util.*
 
 /**
@@ -71,6 +72,17 @@ class CommandHandler(private val plugin: JavaPlugin) : CommandExecutor {
         LoggingService.info("Manual reload initiated by ${sender.name}")
         
         try {
+            val main = plugin as Main
+            
+            // Clear existing data
+            Main.damageMap.clear()
+            Main.lastToucherMap.clear()
+            Main.uuidMap.clear()
+            
+            // Save current cooldowns to database before reload
+            LoggingService.info("Saving existing cooldowns to database before reload...")
+            main.saveCooldownsToDatabase()
+            
             // Reload plugin configuration
             plugin.reloadConfig()
             
@@ -86,11 +98,21 @@ class CommandHandler(private val plugin: JavaPlugin) : CommandExecutor {
             val rootSections = plugin.config.getKeys(false)
             LoggingService.info("Loaded config with sections: ${rootSections.joinToString()}")
             
-            // Reload reward configurations
-            Main.rewardsFromConfig = ConfigService.loadRewardsFromConfig(plugin)
-            
-            // Update logging service debug state
+            // Update logging settings from config
             LoggingService.updateDebugState()
+            
+            // Reconfigure global logging with new settings
+            main.configureGlobalLogging()
+            
+            // Initialize LoggingUtility
+            LoggingUtility.initialize(true)
+            
+            // Reload reward configurations
+            Main.rewardsFromConfig = ConfigService.loadRewardsFromConfig(main)
+            
+            // Reload cooldowns from database
+            LoggingService.info("Loading cooldowns from database after reload...")
+            main.loadCooldownsFromDatabase()
             
             LoggingService.info("Plugin successfully reloaded with ${Main.rewardsFromConfig?.size ?: 0} reward configurations")
             sender.sendMessage(ChatColor.GREEN.toString() + "Reward System plugin successfully reloaded with ${Main.rewardsFromConfig?.size ?: 0} reward configurations")

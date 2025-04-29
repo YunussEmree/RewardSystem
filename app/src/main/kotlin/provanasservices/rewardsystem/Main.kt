@@ -13,6 +13,7 @@ import provanasservices.rewardsystem.service.ConfigService
 import provanasservices.rewardsystem.service.LoggingService
 import provanasservices.rewardsystem.util.ColorUtils
 import provanasservices.rewardsystem.util.Licence
+import provanasservices.rewardsystem.util.LoggingUtility
 import java.io.File
 import java.util.*
 import java.util.concurrent.Executors
@@ -30,7 +31,7 @@ class Main : JavaPlugin() {
     lateinit var dbHelper: DbHelper
     
     /** Thread pool for async database operations */
-    private val dbThreadPool: ThreadPoolExecutor = Executors.newFixedThreadPool(2) as ThreadPoolExecutor
+    val dbThreadPool: ThreadPoolExecutor = Executors.newFixedThreadPool(2) as ThreadPoolExecutor
     
     override fun onEnable() {
         // Store singleton instance
@@ -39,6 +40,9 @@ class Main : JavaPlugin() {
         // Initialize logging service first so all subsequent log calls work
         LoggingService.initialize(this)
         LoggingService.info("${ChatColor.GREEN}RewardSystem initializing...")
+        
+        // Initialize LoggingUtility
+        LoggingUtility.initialize(true)
         
         try {
             // Verify license before proceeding
@@ -91,6 +95,9 @@ class Main : JavaPlugin() {
         // Load configuration
         loadConfiguration()
         
+        // Configure global logging (Bukkit and parent loggers)
+        configureGlobalLogging()
+        
         // Set up database
         setupDatabase()
         
@@ -108,6 +115,72 @@ class Main : JavaPlugin() {
         
         // Register commands
         registerCommands()
+    }
+    
+    /**
+     * Configures global Java logging levels to match our plugin's configured level.
+     * This helps prevent Bukkit/Minecraft logs from showing when we don't want them.
+     */
+    fun configureGlobalLogging() {
+        try {
+            val configLevel = config.getString("Debug.level", "WARNING")?.uppercase() ?: "WARNING"
+            val javaLevel = when(configLevel) {
+                "DEBUG" -> java.util.logging.Level.FINE
+                "INFO" -> java.util.logging.Level.INFO
+                "WARNING" -> java.util.logging.Level.WARNING
+                "SEVERE" -> java.util.logging.Level.SEVERE
+                else -> java.util.logging.Level.WARNING
+            }
+            
+            // Direct configuration of the parent logger level (affects all Bukkit loggers)
+            val rootLogger = java.util.logging.Logger.getLogger("")
+            rootLogger.level = javaLevel
+            
+            // Configure all handlers for consistent output
+            for (handler in rootLogger.handlers) {
+                handler.level = javaLevel
+            }
+            
+            // Set our plugin's logger level
+            logger.level = javaLevel
+            
+            // Configure the Bukkit parent logger
+            val parentLogger = logger.parent
+            if (parentLogger != null) {
+                parentLogger.level = javaLevel
+                
+                // Set all handlers for this logger too
+                for (handler in parentLogger.handlers) {
+                    handler.level = javaLevel
+                }
+            }
+            
+            // Filter any existing messages
+            val bukkitLogger = org.bukkit.Bukkit.getLogger()
+            bukkitLogger.level = javaLevel
+            
+            // Get the java.util.logging.LogManager and set all known loggers
+            // Instead of using reflection which causes warnings in newer Java versions
+            val logManager = java.util.logging.LogManager.getLogManager()
+            
+            // Attempt to set all known logger levels
+            val loggerNames = logManager.loggerNames.toList()
+            for (loggerName in loggerNames) {
+                try {
+                    val logger = logManager.getLogger(loggerName)
+                    if (logger != null) {
+                        logger.level = javaLevel
+                    }
+                } catch (ex: Exception) {
+                    // Skip any loggers that cause problems
+                }
+            }
+            
+            LoggingService.info("Global logging configured to level: $configLevel")
+        } catch (e: Exception) {
+            LoggingService.warning("Failed to configure global logging: ${e.message}")
+            e.printStackTrace()
+        }
     }
     
     /**
@@ -149,8 +222,7 @@ class Main : JavaPlugin() {
         }
         
         // Update logging settings from config
-        val debugEnabled = config.getBoolean("Debug.enabled", false)
-        val debugLevel = config.getString("Debug.level", "WARNING")
+        LoggingService.updateDebugState()
         
         LoggingService.info("Configuration loaded")
     }
@@ -228,7 +300,7 @@ class Main : JavaPlugin() {
      * Loads mob cooldowns from the database.
      * This is done asynchronously to avoid blocking the main thread.
      */
-    private fun loadCooldownsFromDatabase() {
+    fun loadCooldownsFromDatabase() {
         dbThreadPool.execute {
             try {
                 val now = System.currentTimeMillis()
@@ -269,7 +341,7 @@ class Main : JavaPlugin() {
     /**
      * Saves mob cooldowns to the database.
      */
-    private fun saveCooldownsToDatabase() {
+    fun saveCooldownsToDatabase() {
         try {
             val rewards = rewardsFromConfig
             

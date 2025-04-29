@@ -268,14 +268,10 @@ class RewardService(private val plugin: Main) {
                 executeCommand(player, command, damage, entity)
             }
             
-            // Combine manually added chance commands with configured ones
-            val allChanceCommandsToProcess = allChanceRewards.toMutableList()
-            allChanceCommandsToProcess.addAll(chanceCommands)
-            
             // Process chance rewards
-            if (allChanceCommandsToProcess.isNotEmpty()) {
-                LoggingService.debug("Processing ${allChanceCommandsToProcess.size} chance 'all' rewards for player ${player.name}")
-                processChanceRewards(allChanceCommandsToProcess, player, damage, entity)
+            if (allChanceRewards.isNotEmpty()) {
+                LoggingService.debug("Processing ${allChanceRewards.size} chance 'all' rewards for player ${player.name}")
+                processChanceRewards(allChanceRewards, player, damage, entity)
             }
         }
     }

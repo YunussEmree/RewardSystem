@@ -110,14 +110,14 @@ class Events(private val plugin: Main) : Listener {
             }
             
             // Enhanced debugging
-                LoggingService.info("Entity death event: ${entity.type.name} (${entity.name}) with UUID $entityUUID")
+                LoggingService.debug("Entity death event: ${entity.type.name} (${entity.name}) with UUID $entityUUID")
 
 
             
             // Get all reward configurations
             val rewardConfigs = Main.rewardsFromConfig
-            if (rewardConfigs == null) {
-                LoggingService.info("No reward configurations found")
+            if (rewardConfigs == null || rewardConfigs.isEmpty()) {
+                LoggingService.debug("No reward configurations found")
                 return
             }
 
@@ -132,56 +132,67 @@ class Events(private val plugin: Main) : Listener {
             
             Main.lastRewardProcessTime = currentTime
             
-            LoggingService.info("Checking ${rewardConfigs.size} reward configurations")
+            LoggingService.debug("Checking ${rewardConfigs.size} reward configurations")
             
-            // Check if entity is in the damage map
+            // Check if entity has damage tracking
             if (!Main.damageMap.containsKey(entityUUID)) {
-                LoggingService.info("Entity $entityUUID not found in damage map - no rewards will be given")
+                LoggingService.debug("Entity $entityUUID not found in damage map - no rewards will be given")
+                return
             }
             
-            // Process rewards for each applicable reward configuration
-            var matchFound = false
-            rewardConfigs.values.forEach { reward ->
-                // Skip if entity type doesn't match (only if type is specified)
-                if (reward.type != null && reward.type!!.isNotEmpty() && !reward.typeEquals(entity.type.name)) {
-                    LoggingService.debug("Entity type ${entity.type.name} doesn't match reward ${reward.id}")
-                    return@forEach
+            // Look for a matching reward configuration for this entity
+            var matchingReward: RewardMob? = null
+            for (reward in rewardConfigs.values) {
+                // Check entity type
+                if (!reward.doesEntityTypeMatch(entity.type, entity)) {
+                    continue
                 }
                 
-                // Name check if configured
-                if (reward.name != null && reward.name!!.isNotEmpty() && !reward.nameEquals(entity.name)) {
-                    LoggingService.debug("Entity name '${entity.name}' doesn't match reward ${reward.id} name: ${reward.name}")
-                    return@forEach
+                // Check entity name pattern (if configured)
+                if (!reward.doesEntityNameMatch(entity.name)) {
+                    continue
                 }
                 
-                matchFound = true
-                LoggingService.info("Found matching reward configuration: ${reward.id}")
-                
-                // Skip if entity's location isn't in a valid region or world
+                // Check location requirements (world/region)
                 if (!LocationService.isValidLocation(entity.location, reward)) {
-                    LoggingService.info("Entity location doesn't match world/region requirements for reward ${reward.id}")
-                    return@forEach
+                    LoggingService.debug("Entity location doesn't match world/region requirements for reward ${reward.id}")
+                    continue
                 }
                 
-                // Get damage map for this entity
-                val entityDamageMap = Main.damageMap[entityUUID]
-                if (entityDamageMap == null) {
-                    LoggingService.info("No damage map found for entity $entityUUID for reward ${reward.id}")
-                    return@forEach
-                }
-                
-                // Process rewards for this entity and reward configuration
-                processRewards(entity, entityDamageMap, reward)
-                
-                // Clean up tracking data
-                Main.damageMap.remove(entityUUID)
-                Main.uuidMap[reward.id]?.remove(entityUUID)
-                Main.lastToucherMap.remove(entityUUID)
+                // Found a match
+                matchingReward = reward
+                LoggingService.info("Found matching reward configuration: ${reward.id}")
+                break
             }
             
-            if (!matchFound) {
-                LoggingService.info("No matching reward configuration found for entity ${entity.type.name} (${entity.name})")
+            // If no matching reward found, log and return
+            if (matchingReward == null) {
+                LoggingService.debug("No matching reward configuration found for entity ${entity.type.name} (${entity.name})")
+                return
             }
+            
+            // Get damage map for this entity
+            val damageMap = Main.damageMap[entityUUID]
+            if (damageMap == null || damageMap.isEmpty()) {
+                LoggingService.debug("No damage map found for entity $entityUUID for reward ${matchingReward.id}")
+                return
+            }
+            
+            // Send a custom event
+            val customEvent = RewardSystemMobDieEvent(entity, matchingReward, Main.lastToucherMap[entityUUID])
+            Bukkit.getPluginManager().callEvent(customEvent)
+            
+            // Check if the event was cancelled
+            if (customEvent.isCancelled) {
+                LoggingService.debug("RewardSystemMobDieEvent was cancelled by another plugin")
+                return
+            }
+            
+            // Process rewards using the RewardService
+            processRewards(matchingReward, entity, damageMap)
+
+            // Clear tracking for this entity
+            clearEntityTracking(entityUUID)
         } catch (e: Exception) {
             LoggingService.severe("Error processing entity death: ${e.message}")
             e.printStackTrace()
@@ -208,49 +219,44 @@ class Events(private val plugin: Main) : Listener {
     }
     
     /**
-     * Processes rewards for a killed entity.
-     * 
+     * Process rewards for an entity.
+     *
+     * @param reward The matching reward configuration
      * @param entity The entity that died
-     * @param damageMap Map of player names to damage amounts
-     * @param reward The reward configuration to process
+     * @param damageMap Map of player names to damage dealt
      */
-    private fun processRewards(entity: LivingEntity, damageMap: HashMap<String, Double>, reward: RewardMob) {
-        // Enhanced debugging
+    private fun processRewards(reward: RewardMob, entity: LivingEntity, damageMap: HashMap<String, Double>) {
         LoggingService.info("Processing rewards for entity ${entity.type.name} (${entity.name}) with ID ${reward.id}")
-        LoggingService.info("Damage map contains ${damageMap.size} players: ${damageMap.entries.joinToString { "${it.key}=${it.value}" }}")
+        LoggingService.debug("Damage map contains ${damageMap.size} players: ${damageMap.entries.joinToString { "${it.key}=${it.value}" }}")
         
-        // Skip if no players dealt damage
+        // Skip if damage map is empty
         if (damageMap.isEmpty()) {
-            LoggingService.info("Skipping rewards - damage map is empty")
+            LoggingService.debug("Skipping rewards - damage map is empty")
             return
         }
         
-        // Prepare for reward distribution
+        // Calculate total damage
         val totalDamage = damageMap.values.sum()
-        LoggingService.info("Total damage: $totalDamage, Minimum required: ${reward.minimumDamage}")
+        LoggingService.debug("Total damage: $totalDamage, Minimum required: ${reward.minimumDamage}")
         
+        // Get valid players for rewards
         val validPlayers = rewardService.getValidPlayersForReward(damageMap, reward, totalDamage)
-        LoggingService.info("Valid players for rewards: ${validPlayers.size} (${validPlayers.joinToString { it.name }})")
+        LoggingService.debug("Valid players for rewards: ${validPlayers.size} (${validPlayers.joinToString { player -> player.name }})")
         
         // Skip if no valid players
         if (validPlayers.isEmpty()) {
-            LoggingService.info("Skipping rewards - no valid players")
+            LoggingService.debug("Skipping rewards - no valid players")
             return
         }
         
-        // Fire custom event
-        val customEvent = RewardSystemMobDieEvent(damageMap, reward.id)
+        // Send a custom event
+        val customEvent = RewardSystemMobDieEvent(entity, reward, Main.lastToucherMap[entity.uniqueId])
         Bukkit.getPluginManager().callEvent(customEvent)
-        LoggingService.info("RewardSystemMobDieEvent fired for reward ${reward.id}")
+        LoggingService.debug("RewardSystemMobDieEvent fired for reward ${reward.id}")
         
-        try {
-            // Distribute rewards
-            rewardService.distributeRewards(validPlayers, entity, reward, damageMap, totalDamage)
-            LoggingService.info("Rewards distributed successfully")
-        } catch (e: Exception) {
-            LoggingService.severe("Error distributing rewards: ${e.message}")
-            e.printStackTrace()
-        }
+        // Distribute rewards to valid players
+        rewardService.distributeRewards(validPlayers, entity, reward, damageMap, totalDamage)
+        LoggingService.debug("Rewards distributed successfully")
     }
 
     /**
@@ -311,5 +317,21 @@ class Events(private val plugin: Main) : Listener {
     private fun isCommandSafe(command: String): Boolean {
         // Simply return true to allow all commands
         return true
+    }
+
+    /**
+     * Clears tracking data for an entity.
+     *
+     * @param entityUUID The UUID of the entity
+     */
+    private fun clearEntityTracking(entityUUID: UUID) {
+        Main.damageMap.remove(entityUUID)
+        
+        // Handle the UUID map with explicit type specification
+        Main.rewardsFromConfig?.forEach { (id, reward) ->
+            Main.uuidMap[id]?.remove(entityUUID)
+        }
+        
+        Main.lastToucherMap.remove(entityUUID)
     }
 }

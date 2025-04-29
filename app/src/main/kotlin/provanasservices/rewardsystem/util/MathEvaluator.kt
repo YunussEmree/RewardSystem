@@ -19,6 +19,41 @@ object MathEvaluator {
     private val ALLOWED_OPERATORS = setOf("+", "-", "*", "/", "%", "(", ")", "^")
     private val ALLOWED_FUNCTIONS = setOf("min", "max", "abs", "sqrt", "pow", "sin", "cos", "tan")
     
+    // Debug mode flag - can be toggled
+    private var DEBUG_ENABLED = false
+    
+    /**
+     * Initialize the MathEvaluator
+     */
+    fun initialize() {
+        // Initialize the logging utility, detected automatically if we're in Minecraft
+        try {
+            // Check if we can access the LoggingService - if so, we're in Minecraft
+            val inMinecraft = try {
+                // Try to use LoggingService - if no exception, we're in Minecraft
+                Class.forName("provanasservices.rewardsystem.service.LoggingService")
+                true
+            } catch (e: Exception) {
+                false
+            }
+            
+            LoggingUtility.initialize(inMinecraft, DEBUG_ENABLED)
+        } catch (e: Exception) {
+            // Fallback to standalone mode if there's an error
+            LoggingUtility.initialize(false, DEBUG_ENABLED)
+        }
+    }
+    
+    /**
+     * Internal method to log debug messages.
+     * When debug is enabled, this sends messages to LoggingUtility.debug.
+     * When debug is disabled, this is a no-op.
+     * Use this instead of println for all logging in this class.
+     */
+    internal fun logDebug(message: String) {
+        LoggingUtility.debug(message, "MathEvaluator")
+    }
+    
     /**
      * Simple method to test math evaluation directly without needing a Player object.
      * This is for testing purposes only.
@@ -26,7 +61,7 @@ object MathEvaluator {
     fun testEvaluateExpression(expression: String): String {
         try {
             // Simplified version that skips placeholder processing
-            println("Test evaluating expression: $expression")
+            logDebug("Test evaluating expression: $expression")
             
             // Skip processing placeholders
             
@@ -39,27 +74,27 @@ object MathEvaluator {
             
             // Validate the expression for security
             if (!isExpressionSafe(expression)) {
-                println("Potentially unsafe math expression rejected: $expression")
+                logDebug("Potentially unsafe math expression rejected: $expression")
                 return "0"
             }
             
             // Evaluate the expression using safe parser
             val calculatedResult = try {
-                println("Evaluating expression with parser: $expression")
+                logDebug("Evaluating expression with parser: $expression")
                 evaluateSafely(expression)
             } catch (e: Exception) {
-                println("Math expression error: ${e.message} in expression: $expression")
-                e.printStackTrace()
+                logDebug("Math expression error: ${e.message} in expression: $expression")
+                LoggingService.debug(e.stackTraceToString())
                 0.0
             }
             
-            println("Expression result: $calculatedResult")
+            logDebug("Expression result: $calculatedResult")
             
             // Return the result, no rounding
             return calculatedResult.toString()
         } catch (e: Exception) {
-            println("Exception in evaluateExpression: ${e.message}")
-            e.printStackTrace()
+            logDebug("Exception in evaluateExpression: ${e.message}")
+            LoggingService.debug(e.stackTraceToString())
             return "0"
         }
     }
@@ -294,22 +329,22 @@ object MathEvaluator {
             // Check each token for safety
             for (token in tokens) {
                 if (token.first == TokenType.FUNCTION && !ALLOWED_FUNCTIONS.contains(token.second.lowercase())) {
-                    println("Unauthorized function in expression: ${token.second}")
+                    logDebug("Unauthorized function in expression: ${token.second}")
                     return false
                 }
                 if (token.first == TokenType.OPERATOR && !ALLOWED_OPERATORS.contains(token.second)) {
-                    println("Unauthorized operator in expression: ${token.second}")
+                    logDebug("Unauthorized operator in expression: ${token.second}")
                     return false
                 }
                 if (token.first == TokenType.UNKNOWN) {
-                    println("Unknown token in expression: ${token.second}")
+                    logDebug("Unknown token in expression: ${token.second}")
                     return false
                 }
             }
             
             return true
         } catch (e: Exception) {
-            println("Error validating expression: ${e.message}")
+            logDebug("Error validating expression: ${e.message}")
             return false
         }
     }
@@ -478,6 +513,14 @@ object MathEvaluator {
         private val chars = sanitizeExpression(expression).toCharArray()
         
         /**
+         * Log debug information from the parser
+         */
+        private fun logParserDebug(message: String) {
+            // Route all parser debug messages through MathEvaluator's logDebug method
+            MathEvaluator.logDebug("[Parser] $message")
+        }
+        
+        /**
          * Sanitizes the expression to ensure it's parseable
          */
         private fun sanitizeExpression(expr: String): String {
@@ -485,7 +528,7 @@ object MathEvaluator {
             var cleaned = expr.trim()
             
             // Log the initial cleaning step
-            println("Sanitizing expression: '$expr'")
+            logParserDebug("Sanitizing expression: '$expr'")
             
             // Handle max and min functions with nested parentheses, which are common sources of errors
             val maxMinPattern = "(max|min)\\s*\\((.+?)\\)".toRegex(RegexOption.DOT_MATCHES_ALL)
@@ -497,7 +540,7 @@ object MathEvaluator {
                 val funcName = match.groupValues[1]
                 val args = match.groupValues[2]
                 
-                println("Sanitizing $funcName function with args: $args")
+                logParserDebug("Sanitizing $funcName function with args: $args")
                 
                 // Check if this function contains nested parentheses that might cause parsing issues
                 if (args.contains("(") && args.contains(")")) {
@@ -506,7 +549,7 @@ object MathEvaluator {
                     val closeCount = args.count { it == ')' }
                     
                     if (openCount != closeCount) {
-                        println("Unbalanced parentheses in $funcName function arguments: $args")
+                        logParserDebug("Unbalanced parentheses in $funcName function arguments: $args")
                         
                         // Try to fix by balancing parentheses
                         val fixed = if (openCount > closeCount) {
@@ -519,20 +562,20 @@ object MathEvaluator {
                             "$funcName(${"".padEnd(missingOpen, '(')}$args)"
                         }
                         
-                        println("Fixed function call: $fixed")
+                        logParserDebug("Fixed function call: $fixed")
                         cleaned = cleaned.replace(fullMatch, fixed)
                     }
                     
                     // Also check for comma placement in two-argument functions
                     if (!args.contains(",")) {
-                        println("Missing comma in $funcName function arguments: $args")
+                        logParserDebug("Missing comma in $funcName function arguments: $args")
                         
                         // Try to insert a comma if there is an apparent location - in the middle
                         val insertPos = args.length / 2
                         val withComma = args.substring(0, insertPos) + "," + args.substring(insertPos)
                         val fixed = "$funcName($withComma)"
                         
-                        println("Inserted comma in function call: $fixed")
+                        logParserDebug("Inserted comma in function call: $fixed")
                         cleaned = cleaned.replace(fullMatch, fixed)
                     }
                 }
@@ -549,12 +592,12 @@ object MathEvaluator {
             // Add missing closing parentheses if needed
             if (openCount > closeCount) {
                 val missing = openCount - closeCount
-                println("Expression missing $missing closing parentheses, adding them")
+                logParserDebug("Expression missing $missing closing parentheses, adding them")
                 cleaned = cleaned + ")".repeat(missing)
             } else if (closeCount > openCount) {
                 // Add missing opening parentheses if needed
                 val missing = closeCount - openCount
-                println("Expression missing $missing opening parentheses, adding them at the beginning")
+                logParserDebug("Expression missing $missing opening parentheses, adding them at the beginning")
                 cleaned = "(".repeat(missing) + cleaned
             }
             
@@ -587,10 +630,10 @@ object MathEvaluator {
                 }
                 
                 if (!foundClosing) {
-                    println("Function call at position $funcStart missing closing parenthesis")
+                    logParserDebug("Function call at position $funcStart missing closing parenthesis")
                     // Add closing parenthesis at the end
                     cleaned = cleaned + ")"
-                    println("Added missing closing parenthesis at the end")
+                    logParserDebug("Added missing closing parenthesis at the end")
                 }
             }
             
@@ -599,43 +642,43 @@ object MathEvaluator {
             
             // Log any placeholder replacements or other changes
             if (cleaned != expr.trim()) {
-                println("Sanitized expression: '$expr' -> '$cleaned'")
+                logParserDebug("Sanitized expression: '$expr' -> '$cleaned'")
             }
             
             // Return the cleaned expression
-            println("Final sanitized expression: '$cleaned'")
+            logParserDebug("Final sanitized expression: '$cleaned'")
             return cleaned
         }
         
         fun parse(): Double {
             try {
-                println("Starting to parse expression: '${String(chars)}'")
+                logParserDebug("Starting to parse expression: '${String(chars)}'")
                 val result = parseExpression()
                 
                 // Specifically check if we've parsed the entire expression
                 if (pos < chars.size) {
                     val remaining = String(chars.copyOfRange(pos, chars.size))
-                    println("Parser didn't consume entire expression. Remaining: '$remaining'")
+                    logParserDebug("Parser didn't consume entire expression. Remaining: '$remaining'")
                     
                     // Attempt to continue parsing the remaining part
                     if (remaining.trim().isNotEmpty()) {
                         // Reset position and parse the entire expression
-                        println("Restarting parsing from the beginning with full handling")
+                        logParserDebug("Restarting parsing from the beginning with full handling")
                         pos = 0
                         return parseFullExpression()
                     }
                 }
                 
-                println("Parse result: $result")
+                logParserDebug("Parse result: $result")
                 return result
             } catch (e: Exception) {
-                println("Error parsing expression '${String(chars)}': ${e.message}")
+                logParserDebug("Error parsing expression '${String(chars)}': ${e.message}")
                 // Try parsing with full expression handling as fallback
                 try {
                     pos = 0
                     return parseFullExpression()
                 } catch (e2: Exception) {
-                    println("Fallback parsing also failed: ${e2.message}")
+                    logParserDebug("Fallback parsing also failed: ${e2.message}")
                     throw e
                 }
             }
@@ -645,7 +688,7 @@ object MathEvaluator {
          * Parse the full expression, handling all operators at the appropriate precedence level
          */
         private fun parseFullExpression(): Double {
-            println("Using full expression parser")
+            logParserDebug("Using full expression parser")
             
             // First try to handle addition/subtraction expressions
             return parseAddSubtract()
@@ -664,13 +707,13 @@ object MathEvaluator {
                     '+' -> {
                         pos++
                         val term = parseMulDivide()
-                        println("Addition: $result + $term")
+                        logParserDebug("Addition: $result + $term")
                         result += term
                     }
                     '-' -> {
                         pos++
                         val term = parseMulDivide()
-                        println("Subtraction: $result - $term")
+                        logParserDebug("Subtraction: $result - $term")
                         result -= term
                     }
                     else -> break
@@ -693,17 +736,17 @@ object MathEvaluator {
                     '*' -> {
                         pos++
                         val factor = parseExponent()
-                        println("Multiplication: $result * $factor")
+                        logParserDebug("Multiplication: $result * $factor")
                         result *= factor
                     }
                     '/' -> {
                         pos++
                         val factor = parseExponent()
                         if (factor == 0.0) {
-                            println("Division by zero detected! Using 1 instead.")
+                            logParserDebug("Division by zero detected! Using 1 instead.")
                             result /= 1.0
                         } else {
-                            println("Division: $result / $factor")
+                            logParserDebug("Division: $result / $factor")
                             result /= factor
                         }
                     }
@@ -711,10 +754,10 @@ object MathEvaluator {
                         pos++
                         val factor = parseExponent()
                         if (factor == 0.0) {
-                            println("Modulo by zero detected! Using 1 instead.")
+                            logParserDebug("Modulo by zero detected! Using 1 instead.")
                             result %= 1.0
                         } else {
-                            println("Modulo: $result % $factor")
+                            logParserDebug("Modulo: $result % $factor")
                             result %= factor
                         }
                     }
@@ -734,7 +777,7 @@ object MathEvaluator {
             if (pos < chars.size && chars[pos] == '^') {
                 pos++
                 val exponent = parsePrimary()
-                println("Exponentiation: $result ^ $exponent")
+                logParserDebug("Exponentiation: $result ^ $exponent")
                 result = result.pow(exponent)
             }
             
@@ -752,20 +795,20 @@ object MathEvaluator {
             // Handle parentheses
             if (pos < chars.size && chars[pos] == '(') {
                 pos++ // Skip '('
-                println("Found opening parenthesis at position ${pos-1}")
+                logParserDebug("Found opening parenthesis at position ${pos-1}")
                 val result = parseFullExpression()
                 skipWhitespace()
                 
                 if (pos < chars.size && chars[pos] == ')') {
                     pos++ // Skip ')'
-                    println("Found closing parenthesis at position ${pos-1}, result: $result")
+                    logParserDebug("Found closing parenthesis at position ${pos-1}, result: $result")
                     return result
                 } else {
-                    println("Missing closing parenthesis at position $pos")
-                    println("Expression fragment: '${String(chars, Math.max(0, pos-10), Math.min(20, chars.size - Math.max(0, pos-10)))}...'")
+                    logParserDebug("Missing closing parenthesis at position $pos")
+                    logParserDebug("Expression fragment: '${String(chars, Math.max(0, pos-10), Math.min(20, chars.size - Math.max(0, pos-10)))}...'")
                     
                     // In recovery mode - assume there's a closing parenthesis
-                    println("Attempting to recover by assuming a closing parenthesis")
+                    logParserDebug("Attempting to recover by assuming a closing parenthesis")
                     return result
                 }
             }
@@ -773,9 +816,9 @@ object MathEvaluator {
             // Handle negative numbers
             if (pos < chars.size && chars[pos] == '-') {
                 pos++
-                println("Found negative sign at position ${pos-1}")
+                logParserDebug("Found negative sign at position ${pos-1}")
                 val negatedValue = parsePrimary()
-                println("Negated value: -$negatedValue")
+                logParserDebug("Negated value: -$negatedValue")
                 return -negatedValue
             }
             
@@ -792,17 +835,17 @@ object MathEvaluator {
             }
             
             val function = String(chars, funcStart, pos - funcStart).lowercase()
-            println("Found function: $function")
+            logParserDebug("Found function: $function")
             
             if (!ALLOWED_FUNCTIONS.contains(function)) {
-                println("Unknown function: $function")
+                logParserDebug("Unknown function: $function")
                 pos = funcStart // Revert position
                 throw IllegalArgumentException("Unknown function: $function")
             }
             
             skipWhitespace()
             if (pos >= chars.size || chars[pos] != '(') {
-                println("Missing opening parenthesis for function: $function")
+                logParserDebug("Missing opening parenthesis for function: $function")
                 pos = funcStart // Revert position
                 throw IllegalArgumentException("Missing opening parenthesis for function: $function")
             }
@@ -816,7 +859,7 @@ object MathEvaluator {
             // Special case for empty argument list
             if (pos < chars.size && chars[pos] == ')') {
                 pos++ // Skip ')'
-                println("Function $function called with no arguments")
+                logParserDebug("Function $function called with no arguments")
                 
                 // Apply function with no arguments
                 return when (function) {
@@ -837,7 +880,7 @@ object MathEvaluator {
             
             skipWhitespace()
             if (pos >= chars.size || chars[pos] != ')') {
-                println("Missing closing parenthesis for function: $function")
+                logParserDebug("Missing closing parenthesis for function: $function")
                 // Try to continue anyway
             } else {
                 pos++ // Skip ')'
@@ -856,7 +899,7 @@ object MathEvaluator {
                 else -> throw IllegalArgumentException("Unknown function: $function")
             }
             
-            println("Function $function evaluated with ${arguments.size} arguments: $result")
+            logParserDebug("Function $function evaluated with ${arguments.size} arguments: $result")
             return result
         }
         
@@ -870,13 +913,13 @@ object MathEvaluator {
                     '+' -> {
                         pos++
                         val term = parseTerm()
-                        println("Addition: $result + $term")
+                        logParserDebug("Addition: $result + $term")
                         result += term
                     }
                     '-' -> {
                         pos++
                         val term = parseTerm()
-                        println("Subtraction: $result - $term")
+                        logParserDebug("Subtraction: $result - $term")
                         result -= term
                     }
                     else -> break
@@ -894,17 +937,17 @@ object MathEvaluator {
                     '*' -> {
                         pos++
                         val factor = parseFactor()
-                        println("Multiplication: $result * $factor")
+                        logParserDebug("Multiplication: $result * $factor")
                         result *= factor
                     }
                     '/' -> {
                         pos++
                         val factor = parseFactor()
                         if (factor == 0.0) {
-                            println("Division by zero detected! Using 1 instead.")
+                            logParserDebug("Division by zero detected! Using 1 instead.")
                             result /= 1.0
                         } else {
-                            println("Division: $result / $factor")
+                            logParserDebug("Division: $result / $factor")
                             result /= factor
                         }
                     }
@@ -912,17 +955,17 @@ object MathEvaluator {
                         pos++
                         val factor = parseFactor()
                         if (factor == 0.0) {
-                            println("Modulo by zero detected! Using 1 instead.")
+                            logParserDebug("Modulo by zero detected! Using 1 instead.")
                             result %= 1.0
                         } else {
-                            println("Modulo: $result % $factor")
+                            logParserDebug("Modulo: $result % $factor")
                             result %= factor
                         }
                     }
                     '^' -> {
                         pos++
                         val exponent = parseFactor()
-                        println("Exponentiation: $result ^ $exponent")
+                        logParserDebug("Exponentiation: $result ^ $exponent")
                         result = result.pow(exponent)
                     }
                     else -> break
@@ -943,13 +986,13 @@ object MathEvaluator {
             
             if (pos > funcStart) {
                 val function = String(chars, funcStart, pos - funcStart).lowercase()
-                println("Found potential function: $function")
+                logParserDebug("Found potential function: $function")
                 
                 if (ALLOWED_FUNCTIONS.contains(function)) {
                     skipWhitespace()
                     if (pos < chars.size && chars[pos] == '(') {
                         pos++ // Skip '('
-                        println("Parsing arguments for function: $function")
+                        logParserDebug("Parsing arguments for function: $function")
                         
                         // Create a list to store all arguments
                         val arguments = mutableListOf<Double>()
@@ -959,7 +1002,7 @@ object MathEvaluator {
                         if (pos < chars.size && chars[pos] != ')') {
                             val arg = parseExpression()
                             arguments.add(arg)
-                            println("Parsed argument: $arg")
+                            logParserDebug("Parsed argument: $arg")
                             
                             // Parse additional arguments if present
                             while (pos < chars.size && chars[pos] == ',') {
@@ -967,7 +1010,7 @@ object MathEvaluator {
                                 skipWhitespace()
                                 val nextArg = parseExpression()
                                 arguments.add(nextArg)
-                                println("Parsed additional argument: $nextArg")
+                                logParserDebug("Parsed additional argument: $nextArg")
                                 skipWhitespace()
                             }
                         }
@@ -989,11 +1032,11 @@ object MathEvaluator {
                                 else -> throw IllegalArgumentException("Unknown function: $function")
                             }
                             
-                            println("Function $function evaluated with ${arguments.size} arguments: $result")
+                            logParserDebug("Function $function evaluated with ${arguments.size} arguments: $result")
                             return result
                         } else {
                             // Missing closing parenthesis
-                            println("Missing closing parenthesis for function: $function")
+                            logParserDebug("Missing closing parenthesis for function: $function")
                             
                             // Apply the function anyway as a fallback
                             val result = when (function) {
@@ -1008,34 +1051,34 @@ object MathEvaluator {
                                 else -> throw IllegalArgumentException("Unknown function: $function")
                             }
                             
-                            println("Function $function evaluation recovery with result: $result")
+                            logParserDebug("Function $function evaluation recovery with result: $result")
                             return result
                         }
                     }
                 }
                 
                 // Not a function or invalid function syntax, revert position
-                println("Not a valid function call, reverting position to $funcStart")
+                logParserDebug("Not a valid function call, reverting position to $funcStart")
                 pos = funcStart
             }
             
             // Handle parentheses
             if (pos < chars.size && chars[pos] == '(') {
                 pos++ // Skip '('
-                println("Found opening parenthesis at position ${pos-1}")
+                logParserDebug("Found opening parenthesis at position ${pos-1}")
                 val result = parseExpression()
                 skipWhitespace()
                 
                 if (pos < chars.size && chars[pos] == ')') {
                     pos++ // Skip ')'
-                    println("Found closing parenthesis at position ${pos-1}, result: $result")
+                    logParserDebug("Found closing parenthesis at position ${pos-1}, result: $result")
                     return result
                 } else {
-                    println("Missing closing parenthesis at position $pos")
-                    println("Expression fragment: '${String(chars, Math.max(0, pos-10), Math.min(20, chars.size - Math.max(0, pos-10)))}...'")
+                    logParserDebug("Missing closing parenthesis at position $pos")
+                    logParserDebug("Expression fragment: '${String(chars, Math.max(0, pos-10), Math.min(20, chars.size - Math.max(0, pos-10)))}...'")
                     
                     // In recovery mode - assume there's a closing parenthesis
-                    println("Attempting to recover by assuming a closing parenthesis")
+                    logParserDebug("Attempting to recover by assuming a closing parenthesis")
                     return result
                 }
             }
@@ -1043,9 +1086,9 @@ object MathEvaluator {
             // Handle negative numbers
             if (pos < chars.size && chars[pos] == '-') {
                 pos++
-                println("Found negative sign at position ${pos-1}")
+                logParserDebug("Found negative sign at position ${pos-1}")
                 val negatedValue = parseFactor()
-                println("Negated value: -$negatedValue")
+                logParserDebug("Negated value: -$negatedValue")
                 return -negatedValue
             }
             
@@ -1062,7 +1105,7 @@ object MathEvaluator {
             while (pos < chars.size && (chars[pos].isDigit() || chars[pos] == '.')) {
                 if (chars[pos] == '.') {
                     if (hasDecimal) {
-                        println("Invalid number format: multiple decimal points at position $pos")
+                        logParserDebug("Invalid number format: multiple decimal points at position $pos")
                         throw IllegalArgumentException("Invalid number format: multiple decimal points")
                     }
                     hasDecimal = true
@@ -1071,13 +1114,13 @@ object MathEvaluator {
             }
             
             if (start == pos) {
-                println("Expected number at position $pos but found '${if (pos < chars.size) chars[pos] else "end of input"}'")
+                logParserDebug("Expected number at position $pos but found '${if (pos < chars.size) chars[pos] else "end of input"}'")
                 throw IllegalArgumentException("Expected number at position $pos")
             }
             
             val numStr = String(chars, start, pos - start)
             val result = numStr.toDouble()
-            println("Parsed number: $result")
+            logParserDebug("Parsed number: $result")
             return result
         }
         
@@ -1087,7 +1130,7 @@ object MathEvaluator {
                 pos++
             }
             if (pos > startPos) {
-                println("Skipped whitespace from position $startPos to $pos")
+                logParserDebug("Skipped whitespace from position $startPos to $pos")
             }
         }
     }
@@ -1115,10 +1158,10 @@ object MathEvaluator {
          * Supports multiple arguments and filters out invalid values
          */
         private fun evaluateMaxFunction(args: List<Double>): Double {
-            println("Evaluating max function with args: $args")
+            MathEvaluator.logDebug("Evaluating max function with args: $args")
             
             if (args.isEmpty()) {
-                println("Max function called with no arguments, returning 0")
+                MathEvaluator.logDebug("Max function called with no arguments, returning 0")
                 return 0.0
             }
             
@@ -1126,19 +1169,19 @@ object MathEvaluator {
             val validArgs = args.filter { !it.isNaN() }
             
             if (validArgs.isEmpty()) {
-                println("Max function has only NaN arguments, returning 0")
+                MathEvaluator.logDebug("Max function has only NaN arguments, returning 0")
                 return 0.0
             }
             
             // Handle special cases for infinity
             if (validArgs.any { it == Double.POSITIVE_INFINITY }) {
-                println("Max function contains POSITIVE_INFINITY, returning POSITIVE_INFINITY")
+                MathEvaluator.logDebug("Max function contains POSITIVE_INFINITY, returning POSITIVE_INFINITY")
                 return Double.POSITIVE_INFINITY
             }
             
             // Handle the regular case
             val maxValue = validArgs.maxOrNull() ?: 0.0
-            println("Max function result: $maxValue from valid arguments: $validArgs")
+            MathEvaluator.logDebug("Max function result: $maxValue from valid arguments: $validArgs")
             return maxValue
         }
         
@@ -1147,10 +1190,10 @@ object MathEvaluator {
          * Supports multiple arguments and filters out invalid values
          */
         private fun evaluateMinFunction(args: List<Double>): Double {
-            println("Evaluating min function with args: $args")
+            MathEvaluator.logDebug("Evaluating min function with args: $args")
             
             if (args.isEmpty()) {
-                println("Min function called with no arguments, returning 0")
+                MathEvaluator.logDebug("Min function called with no arguments, returning 0")
                 return 0.0
             }
             
@@ -1158,19 +1201,19 @@ object MathEvaluator {
             val validArgs = args.filter { !it.isNaN() }
             
             if (validArgs.isEmpty()) {
-                println("Min function has only NaN arguments, returning 0")
+                MathEvaluator.logDebug("Min function has only NaN arguments, returning 0")
                 return 0.0
             }
             
             // Handle special cases for infinity
             if (validArgs.any { it == Double.NEGATIVE_INFINITY }) {
-                println("Min function contains NEGATIVE_INFINITY, returning NEGATIVE_INFINITY")
+                MathEvaluator.logDebug("Min function contains NEGATIVE_INFINITY, returning NEGATIVE_INFINITY")
                 return Double.NEGATIVE_INFINITY
             }
             
             // Handle the regular case
             val minValue = validArgs.minOrNull() ?: 0.0
-            println("Min function result: $minValue from valid arguments: $validArgs")
+            MathEvaluator.logDebug("Min function result: $minValue from valid arguments: $validArgs")
             return minValue
         }
         
@@ -1183,13 +1226,13 @@ object MathEvaluator {
                 "-" -> left - right
                 "*" -> left * right
                 "/" -> if (right == 0.0) {
-                    println("Division by zero detected, returning Infinity")
+                    MathEvaluator.logDebug("Division by zero detected, returning Infinity")
                     Double.POSITIVE_INFINITY
                 } else {
                     left / right
                 }
                 "%" -> if (right == 0.0) {
-                    println("Modulo by zero detected, returning 0")
+                    MathEvaluator.logDebug("Modulo by zero detected, returning 0")
                     0.0
                 } else {
                     left % right

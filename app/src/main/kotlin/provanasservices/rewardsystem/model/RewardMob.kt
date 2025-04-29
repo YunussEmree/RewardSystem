@@ -149,6 +149,42 @@ class RewardMob {
     }
     
     /**
+     * Checks if an entity's type matches this reward's configured type.
+     * 
+     * @param entityType The entity type to check
+     * @param entity The entity itself (for additional type checks if needed)
+     * @return true if type matches or if no type is configured
+     */
+    fun doesEntityTypeMatch(entityType: org.bukkit.entity.EntityType, entity: org.bukkit.entity.Entity): Boolean {
+        if (this.type == null || this.type!!.isEmpty()) {
+            LoggingService.debug("Type check skipped - config type is null or empty")
+            return true
+        }
+        
+        val entityTypeName = entityType.name
+        LoggingService.debug("Entity type check - Entity type: $entityTypeName, Config type: ${this.type}")
+        
+        return typeEquals(entityTypeName)
+    }
+    
+    /**
+     * Checks if an entity's name matches this reward's configured name pattern.
+     * 
+     * @param entityName The entity name to check
+     * @return true if name matches or if no name is configured
+     */
+    fun doesEntityNameMatch(entityName: String): Boolean {
+        LoggingService.debug("Entity name check - Entity name: $entityName, Config name: ${this.name}")
+        
+        if (this.name == null || this.name!!.isEmpty()) {
+            LoggingService.debug("Name check skipped - config name is null or empty")
+            return true
+        }
+        
+        return nameEquals(entityName)
+    }
+    
+    /**
      * Helper method to clean up mob names for consistent comparison.
      * - Translates color codes
      * - Strips color codes

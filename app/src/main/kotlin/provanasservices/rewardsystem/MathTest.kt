@@ -1,5 +1,6 @@
 package provanasservices.rewardsystem
 
+import provanasservices.rewardsystem.util.LoggingUtility
 import provanasservices.rewardsystem.util.MathEvaluator
 
 /**
@@ -13,13 +14,18 @@ object MathTest {
      */
     @JvmStatic
     fun main(args: Array<String>) {
-        println("Math Expression Tester")
-        println("======================")
-        println()
+        // Initialize logging in standalone mode with debug enabled
+        LoggingUtility.initialize(false, true)
+        
+        LoggingUtility.info("Math Expression Tester")
+        LoggingUtility.info("======================")
+        
+        // Initialize MathEvaluator
+        MathEvaluator.initialize()
 
         // Test basic expressions
-        println("BASIC ARITHMETIC")
-        println("----------------")
+        LoggingUtility.info("BASIC ARITHMETIC")
+        LoggingUtility.info("----------------")
         testGroup(listOf(
             "5 + 3",
             "10 - 4", 
@@ -29,8 +35,8 @@ object MathTest {
         ))
         
         // Test parenthesized expressions
-        println("\nPARENTHESIZED EXPRESSIONS")
-        println("-------------------------")
+        LoggingUtility.info("\nPARENTHESIZED EXPRESSIONS")
+        LoggingUtility.info("-------------------------")
         testGroup(listOf(
             "(5 + 3) * 2",
             "10 - (4 + 1)",
@@ -40,8 +46,8 @@ object MathTest {
         ))
         
         // Test complex expressions
-        println("\nCOMPLEX EXPRESSIONS")
-        println("-------------------")
+        LoggingUtility.info("\nCOMPLEX EXPRESSIONS")
+        LoggingUtility.info("-------------------")
         testGroup(listOf(
             "5 + 3 * 2",
             "10 - 4 + 1",
@@ -51,8 +57,8 @@ object MathTest {
         ))
         
         // Test specifically the expressions that were causing issues
-        println("\nPROBLEM EXPRESSIONS")
-        println("-------------------")
+        LoggingUtility.info("\nPROBLEM EXPRESSIONS")
+        LoggingUtility.info("-------------------")
         testGroup(listOf(
             "20 + (25 / 10)",  // Was truncating after "20"
             "90 - (25 * 10)",  // Was truncating after "90"
@@ -62,8 +68,8 @@ object MathTest {
         ))
         
         // Test multi-argument functions
-        println("\nMULTI-ARGUMENT FUNCTIONS")
-        println("------------------------")
+        LoggingUtility.info("\nMULTI-ARGUMENT FUNCTIONS")
+        LoggingUtility.info("------------------------")
         testGroup(listOf(
             "max(1, 2, 3, 4, 5)",
             "min(5, 4, 3, 2, 1)",
@@ -71,7 +77,7 @@ object MathTest {
             "min(5, min(3, 8))"
         ))
         
-        println("\nTesting complete!")
+        LoggingUtility.info("\nTesting complete!")
     }
     
     /**
@@ -81,9 +87,9 @@ object MathTest {
         expressions.forEach { expr ->
             try {
                 val result = MathEvaluator.testEvaluateExpression(expr)
-                println("  $expr = $result")
+                LoggingUtility.info("  $expr = $result")
             } catch (e: Exception) {
-                println("  $expr = ERROR: ${e.message}")
+                LoggingUtility.error("  $expr = ERROR: ${e.message}")
             }
         }
     }

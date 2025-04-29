@@ -33,17 +33,19 @@ class SqliteHelper(private val plugin: Main) : DbHelper {
             // Create database file path
             val dbFile = File(databaseFolder, "cooldowns.db")
             
-            // Connect to database
+            // Ensure directory exists
+            dbFile.parentFile.mkdirs()
+            
+            // Initialize connection
             Class.forName("org.sqlite.JDBC")
-            connection = DriverManager.getConnection("jdbc:sqlite:" + dbFile.absolutePath)
+            connection = DriverManager.getConnection("jdbc:sqlite:${dbFile.absolutePath}")
+            LoggingService.debug("Connected to SQLite database at ${dbFile.absolutePath}")
 
             // Create tables if they don't exist
             createTables()
-            
-            LoggingService.info("Connected to SQLite database at ${dbFile.absolutePath}")
         } catch (e: Exception) {
             LoggingService.severe("Failed to connect to SQLite database: ${e.message}")
-            e.printStackTrace()
+            throw e
         }
     }
 
@@ -54,11 +56,10 @@ class SqliteHelper(private val plugin: Main) : DbHelper {
         try {
             if (connection != null && !connection!!.isClosed) {
                 connection!!.close()
-                LoggingService.info("Disconnected from SQLite database")
+                LoggingService.debug("Disconnected from SQLite database")
             }
         } catch (e: SQLException) {
-            LoggingService.severe("Error closing SQLite connection: ${e.message}")
-            e.printStackTrace()
+            LoggingService.warning("Error closing SQLite connection: ${e.message}")
         }
     }
 

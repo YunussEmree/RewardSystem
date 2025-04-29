@@ -31,29 +31,27 @@ class MysqlHelper(private val plugin: Main) : DbHelper {
      */
     override fun connect() {
         try {
-            val configFile = File(plugin.dataFolder, "config.yml")
-            if (!configFile.exists()) {
-                plugin.saveResource("config.yml", false)
-            }
-            val config = YamlConfiguration.loadConfiguration(configFile)
-            dbUrl = config.getString("Database.url", "jdbc:mysql://localhost:3306/minecraft").toString()
-            username = config.getString("Database.username", "root").toString()
-            password = config.getString("Database.password", "").toString()
-
+            // Get MySQL configuration from config.yml
+            val dbHost = plugin.config.getString("Database.mysql.host") ?: "localhost"
+            val dbPort = plugin.config.getInt("Database.mysql.port", 3306)
+            val dbName = plugin.config.getString("Database.mysql.database") ?: "rewardsystem"
+            val dbUser = plugin.config.getString("Database.mysql.username") ?: "root"
+            val dbPassword = plugin.config.getString("Database.mysql.password") ?: ""
+            val useSSL = plugin.config.getBoolean("Database.mysql.use_ssl", false)
+            
             // Build connection URL
-            val url = "jdbc:mysql://$dbUrl?useSSL=false"
-
-            // Establish connection
+            val dbUrl = "jdbc:mysql://$dbHost:$dbPort/$dbName?useSSL=$useSSL"
+            
+            // Initialize connection
             Class.forName("com.mysql.jdbc.Driver")
-            connection = DriverManager.getConnection(url, username, password)
-
+            connection = DriverManager.getConnection(dbUrl, dbUser, dbPassword)
+            LoggingService.debug("Connected to MySQL database at $dbUrl")
+            
             // Create tables if they don't exist
             createTables()
-            
-            LoggingService.info("Connected to MySQL database at $dbUrl")
         } catch (e: Exception) {
             LoggingService.severe("Failed to connect to MySQL database: ${e.message}")
-            e.printStackTrace()
+            throw e
         }
     }
 
@@ -62,13 +60,10 @@ class MysqlHelper(private val plugin: Main) : DbHelper {
      */
     override fun disconnect() {
         try {
-            if (connection != null && !connection!!.isClosed) {
-                connection!!.close()
-                LoggingService.info("Disconnected from MySQL database")
-            }
-        } catch (e: SQLException) {
-            LoggingService.severe("Error closing MySQL connection: ${e.message}")
-            e.printStackTrace()
+            connection?.close()
+            LoggingService.debug("Disconnected from MySQL database")
+        } catch (e: Exception) {
+            LoggingService.warning("Error closing MySQL connection: ${e.message}")
         }
     }
 

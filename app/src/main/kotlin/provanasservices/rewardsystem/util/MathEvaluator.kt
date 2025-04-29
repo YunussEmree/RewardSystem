@@ -76,7 +76,7 @@ object MathEvaluator {
         // If no math expressions present, return the original command
         if (!command.contains("{math:")) return command
         
-        LoggingService.info("Processing command with math expressions: $command")
+        LoggingService.debug("Processing command with math expressions: $command")
         
         // Handle special case of max and min functions specifically as a pre-processing step
         val specialFunctionsPattern = "\\{math:(max|min)\\s*\\((.*?)\\)\\}%?".toRegex(RegexOption.DOT_MATCHES_ALL)
@@ -85,7 +85,7 @@ object MathEvaluator {
         // First pass - replace all math function expressions with simple placeholder values
         val mathFunctionMatches = specialFunctionsPattern.findAll(command).toList()
         if (mathFunctionMatches.isNotEmpty()) {
-            LoggingService.info("Found ${mathFunctionMatches.size} special function expressions to pre-process")
+            LoggingService.debug("Found ${mathFunctionMatches.size} special function expressions to pre-process")
             
             for ((index, match) in mathFunctionMatches.withIndex()) {
                 try {
@@ -93,7 +93,7 @@ object MathEvaluator {
                     val functionName = match.groupValues[1] // max or min
                     val argsText = match.groupValues[2] // arguments including any commas
                     
-                    LoggingService.info("Pre-processing $functionName function #${index+1}: $fullMatch")
+                    LoggingService.debug("Pre-processing $functionName function #${index+1}: $fullMatch")
                     
                     // Check if this is a max/min function with a comma
                     if (argsText.contains(",")) {
@@ -107,23 +107,23 @@ object MathEvaluator {
                         val arg1 = argsText.substring(0, commaIndex).trim()
                         val arg2 = argsText.substring(commaIndex + 1).trim()
                         
-                        LoggingService.info("Function $functionName arguments: 1='$arg1', 2='$arg2'")
+                        LoggingService.debug("Function $functionName arguments: 1='$arg1', 2='$arg2'")
                         
                         // Process placeholders in arguments
                         var processed1 = PlaceholderService.setPlaceholders(player, arg1)
                         var processed2 = PlaceholderService.setPlaceholders(player, arg2)
                         
-                        LoggingService.info("After placeholder processing: 1='$processed1', 2='$processed2'")
+                        LoggingService.debug("After placeholder processing: 1='$processed1', 2='$processed2'")
                         
                         // First, check if either argument needs further math evaluation
                         // For example, if it contains nested parentheses or operations
                         if (needsFurtherEvaluation(processed1)) {
-                            LoggingService.info("Argument 1 needs further evaluation: $processed1")
+                            LoggingService.debug("Argument 1 needs further evaluation: $processed1")
                             try {
                                 // Recursively evaluate this math expression
                                 val evaluated = evaluateExpression(processed1, player, roundingMode)
                                 processed1 = evaluated
-                                LoggingService.info("Evaluated argument 1 to: $processed1")
+                                LoggingService.debug("Evaluated argument 1 to: $processed1")
                             } catch (e: Exception) {
                                 LoggingService.warning("Failed to evaluate argument 1: ${e.message}")
                                 processed1 = "0" // Default to 0 on failure
@@ -131,12 +131,12 @@ object MathEvaluator {
                         }
                         
                         if (needsFurtherEvaluation(processed2)) {
-                            LoggingService.info("Argument 2 needs further evaluation: $processed2")
+                            LoggingService.debug("Argument 2 needs further evaluation: $processed2")
                             try {
                                 // Recursively evaluate this math expression
                                 val evaluated = evaluateExpression(processed2, player, roundingMode)
                                 processed2 = evaluated
-                                LoggingService.info("Evaluated argument 2 to: $processed2")
+                                LoggingService.debug("Evaluated argument 2 to: $processed2")
                             } catch (e: Exception) {
                                 LoggingService.warning("Failed to evaluate argument 2: ${e.message}")
                                 processed2 = "0" // Default to 0 on failure
@@ -156,7 +156,7 @@ object MathEvaluator {
                         
                         // Apply rounding
                         val roundedResult = applyRounding(result, roundingMode)
-                        LoggingService.info("Function $functionName result: $roundedResult")
+                        LoggingService.debug("Function $functionName result: $roundedResult")
                         
                         // Replace the original function with its calculated value
                         // We need to use Regex.escapeReplacement to handle special characters in the replacement
@@ -174,9 +174,9 @@ object MathEvaluator {
         val result = MATH_PATTERN.replace(processedCommand) { matchResult ->
             val expression = matchResult.groupValues[1]
             try {
-                LoggingService.info("Found math expression: {math:$expression}")
+                LoggingService.debug("Found math expression: {math:$expression}")
                 val evaluated = evaluateExpression(expression, player, roundingMode)
-                LoggingService.info("Evaluated result: $evaluated")
+                LoggingService.debug("Evaluated result: $evaluated")
                 evaluated
             } catch (e: Exception) {
                 // If evaluation fails, return 0
@@ -185,7 +185,7 @@ object MathEvaluator {
             }
         }
         
-        LoggingService.info("Final command after math processing: $result")
+        LoggingService.debug("Final command after math processing: $result")
         return result
     }
     
@@ -231,18 +231,18 @@ object MathEvaluator {
      */
     fun evaluateExpression(expression: String, player: Player, roundingMode: String = "none"): String {
         try {
-            LoggingService.info("Evaluating math expression: $expression")
+            LoggingService.debug("Evaluating math expression: $expression")
             
             // Process placeholders in the expression
             val processedExpr = processMathPlaceholders(expression, player, roundingMode)
-            LoggingService.info("After placeholder processing: $processedExpr")
+            LoggingService.debug("After placeholder processing: $processedExpr")
             
             // Check if we're dealing with a simple numeric value after placeholder resolution
             val asDirectNumber = processedExpr.toDoubleOrNull()
             if (asDirectNumber != null) {
                 // The expression resolved to a simple number, just return it with proper rounding
                 val result = applyRounding(asDirectNumber, roundingMode)
-                LoggingService.info("Expression is a direct number after placeholder processing: $result")
+                LoggingService.debug("Expression is a direct number after placeholder processing: $result")
                 return result
             }
             
@@ -254,7 +254,7 @@ object MathEvaluator {
             
             // Evaluate the expression using safe parser
             val calculatedResult = try {
-                LoggingService.info("Evaluating expression with parser: $processedExpr")
+                LoggingService.debug("Evaluating expression with parser: $processedExpr")
                 evaluateSafely(processedExpr)
             } catch (e: Exception) {
                 LoggingService.warning("Math expression error: ${e.message} in expression: $processedExpr")
@@ -262,11 +262,11 @@ object MathEvaluator {
                 0.0
             }
             
-            LoggingService.info("Expression result: $calculatedResult")
+            LoggingService.debug("Expression result: $calculatedResult")
             
             // Apply rounding based on config
             val finalResult = applyRounding(calculatedResult, roundingMode)
-            LoggingService.info("Final result after rounding: $finalResult")
+            LoggingService.debug("Final result after rounding: $finalResult")
             
             return finalResult
         } catch (e: Exception) {
@@ -394,7 +394,7 @@ object MathEvaluator {
      * @return The expression with placeholders replaced by their values
      */
     private fun processMathPlaceholders(expression: String, player: Player, roundingMode: String = "none"): String {
-        LoggingService.info("Processing math placeholders in expression: $expression")
+        LoggingService.debug("Processing math placeholders in expression: $expression")
         
         // First, process all placeholders within the expression
         // Start by replacing all placeholders with their actual values
@@ -408,8 +408,8 @@ object MathEvaluator {
             
             // Only replace if we got a different value (meaning the placeholder was processed)
             if (value != placeholder) {
-                LoggingService.info("Replacing placeholder '$placeholder' with value '$value'")
                 processedExpression = processedExpression.replace(placeholder, value)
+                LoggingService.debug("Replacing placeholder '$placeholder' with value '$value'")
             } else {
                 LoggingService.warning("Placeholder '$placeholder' was not processed - might be an unknown placeholder")
             }
@@ -423,18 +423,17 @@ object MathEvaluator {
             
             // Only replace if we got a different value
             if (value != placeholder) {
-                LoggingService.info("Replacing bracket placeholder '$placeholder' with value '$value'")
                 processedExpression = processedExpression.replace(placeholder, value)
+                LoggingService.debug("Replacing bracket placeholder '$placeholder' with value '$value'")
             }
         }
         
-        // Debug log the processed expression
-        LoggingService.info("Expression after placeholder processing: $processedExpression")
+        LoggingService.debug("Expression after placeholder processing: $processedExpression")
         
-        // Handle numeric formatting if needed
-        val finalExpression = processNumericPlaceholders(processedExpression, roundingMode)
+        // Now check if we have any math expressions that need to be calculated
+        val finalExpression = processedExpression
+        LoggingService.debug("Final processed expression: $finalExpression")
         
-        LoggingService.info("Final processed expression: $finalExpression")
         return finalExpression
     }
     

@@ -141,7 +141,7 @@ class RewardService(private val plugin: Main) {
         totalDamage: Double
     ) {
         LoggingService.info("Distributing rewards for entity ${entity.type.name} (${entity.name}) with ID ${reward.id}")
-        LoggingService.info("Players to reward: ${players.size} (${players.joinToString { it.name }})")
+        LoggingService.debug("Players to reward: ${players.size} (${players.joinToString { it.name }})")
         
         try {
             // Set cooldowns for all players
@@ -255,8 +255,8 @@ class RewardService(private val plugin: Main) {
             allRewards?.forEach { command ->
                 if (isLikelyChanceCommand(command)) {
                     LoggingService.warning("Found command in regular rewards that appears to be a chance command: \"$command\"")
-                    LoggingService.warning("Routing it through the chance system with 100% probability for safety")
-                    chanceCommands.add(RewardMob.ChanceReward(100.0, command))
+                    // Don't route through chance system, just treat as regular command for consistency
+                    regularCommands.add(command)
                 } else {
                     regularCommands.add(command)
                 }
@@ -443,7 +443,7 @@ class RewardService(private val plugin: Main) {
         damage: Double,
         entity: LivingEntity
     ) {
-        LoggingService.info("Processing ${chanceRewards.size} chance rewards for player ${player.name}")
+        LoggingService.debug("Processing ${chanceRewards.size} chance rewards for player ${player.name}")
         
         for ((index, chanceReward) in chanceRewards.withIndex()) {
             try {
@@ -628,7 +628,7 @@ class RewardService(private val plugin: Main) {
                     // Chance test successful, execute the command with the chance expression removed
                     val cleanCommand = stripChanceExpressions(chanceReward.commands)
                     
-                    LoggingService.info("✅ Player ${player.name} passed chance test: %$chance - command will execute")
+                    LoggingService.debug("✅ Player ${player.name} passed chance test: %$chance - command will execute")
                     
                     // Only execute if the command has something after stripping
                     if (cleanCommand.isNotBlank()) {
@@ -783,24 +783,25 @@ class RewardService(private val plugin: Main) {
      */
     private fun executeCommand(player: Player, command: String, damage: Double, entity: LivingEntity): Boolean {
         try {
-            LoggingService.info("Starting command execution: \"$command\"")
+            // For high volume operations like command execution, use debug logging
+            LoggingService.debug("Starting command execution: \"$command\"")
             
             // Process basic placeholders
             var processedCommand = command.replace("%player%", player.name)
                 .replace("%damage%", damage.toString())
                 .replace("%entity%", entity.type.name.lowercase())
-            LoggingService.info("Command after basic placeholder processing: \"$processedCommand\"")
+            LoggingService.debug("Command after basic placeholder processing: \"$processedCommand\"")
             
             // Handle any server and player-specific placeholders through PlaceholderService
             processedCommand = PlaceholderService.setPlaceholders(player, processedCommand)
-            LoggingService.info("Command after PlaceholderService processing: \"$processedCommand\"")
+            LoggingService.debug("Command after PlaceholderService processing: \"$processedCommand\"")
             
             // Process math expressions with MathEvaluator
             var finalCommand = processedCommand
             if (processedCommand.contains("{math:")) {
-                LoggingService.info("Command contains math expression, processing with MathEvaluator")
+                LoggingService.debug("Command contains math expression, processing with MathEvaluator")
                 finalCommand = MathEvaluator.processCommand(processedCommand, player, "round") ?: processedCommand
-                LoggingService.info("Command after math processing: \"$finalCommand\"")
+                LoggingService.debug("Command after math processing: \"$finalCommand\"")
             }
             
             // Now, before sending to Minecraft, we need to strip the chance expressions
@@ -812,19 +813,19 @@ class RewardService(private val plugin: Main) {
                 executableCommand.contains("{math:") && executableCommand.contains("}%")) {
                 
                 // Keep the original for our logs
-                LoggingService.info("Command contains chance expression, preparing for Minecraft execution")
+                LoggingService.debug("Command contains chance expression, preparing for Minecraft execution")
                 
                 // Strip chance expression before executing
                 executableCommand = stripChanceExpressions(executableCommand)
-                LoggingService.info("Command ready for Minecraft: \"$executableCommand\"")
+                LoggingService.debug("Command ready for Minecraft: \"$executableCommand\"")
             }
             
             // Execute the command with Minecraft-compatible syntax
-            LoggingService.info("Executing command: \"$executableCommand\"")
+            LoggingService.debug("Executing command: \"$executableCommand\"")
             val success = Bukkit.dispatchCommand(Bukkit.getConsoleSender(), executableCommand)
             
             if (success) {
-                LoggingService.info("Command executed successfully")
+                LoggingService.debug("Command executed successfully")
             } else {
                 LoggingService.warning("Command execution failed")
             }

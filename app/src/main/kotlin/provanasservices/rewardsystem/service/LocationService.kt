@@ -157,27 +157,27 @@ object LocationService {
             return true
         }
         
-        LoggingService.info("Checking region '${reward.enabledRegion}' for reward ${reward.id} in world ${location.world?.name}")
+        LoggingService.debug("Checking region '${reward.enabledRegion}' for reward ${reward.id} in world ${location.world?.name}")
         
         // Get WorldGuard plugin instance
         try {
             // Skip region check if WorldGuard is not available
             if (!isWorldGuardAvailable()) {
-                LoggingService.info("WorldGuard not available for region checks, skipping region validation")
+                LoggingService.debug("WorldGuard not available for region checks, skipping region validation")
                 return true
             }
             
             // Get region container from WorldGuard
             val container = WorldGuard.getInstance().platform.regionContainer
             if (container == null) {
-                LoggingService.info("WorldGuard region container is null, skipping region validation")
+                LoggingService.debug("WorldGuard region container is null, skipping region validation")
                 return true
             }
             
             // Get region manager for this world
             val regions = container.get(BukkitAdapter.adapt(location.world))
             if (regions == null) {
-                LoggingService.info("No region manager for world ${location.world?.name}, skipping region validation")
+                LoggingService.debug("No region manager for world ${location.world?.name}, skipping region validation")
                 return true
             }
             
@@ -194,7 +194,7 @@ object LocationService {
             }
             
             // Location is not in any applicable region
-            LoggingService.info("Entity is not in region '${reward.enabledRegion}', reward will be skipped")
+            LoggingService.debug("Entity is not in region '${reward.enabledRegion}', reward will be skipped")
             return false
         } catch (e: Exception) {
             LoggingService.warning("Error checking region: ${e.message}")

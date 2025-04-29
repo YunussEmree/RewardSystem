@@ -14,6 +14,17 @@ object LoggingService {
     private lateinit var plugin: JavaPlugin
     private var debugEnabled = false
     private var verboseEnabled = false
+    private var logLevel = LogLevel.WARNING // Default log level
+    
+    /**
+     * Enum to represent log levels with numeric values for comparison
+     */
+    enum class LogLevel(val value: Int) {
+        DEBUG(0),
+        INFO(1),
+        WARNING(2),
+        SEVERE(3)
+    }
     
     /**
      * Initializes the logging service with the plugin instance.
@@ -35,31 +46,54 @@ object LoggingService {
         debugEnabled = plugin.config.getBoolean("Debug.enabled", false)
         verboseEnabled = plugin.config.getBoolean("Debug.verbose", false)
         
+        // Set the log level from config
+        val configLevel = plugin.config.getString("Debug.level", "WARNING")?.uppercase() ?: "WARNING"
+        logLevel = try {
+            LogLevel.valueOf(configLevel)
+        } catch (e: IllegalArgumentException) {
+            warning("Invalid log level in config: $configLevel. Using WARNING level.")
+            LogLevel.WARNING
+        }
+        
+        // Set the Java logger level to match our configuration
+        val javaLevel = when(logLevel) {
+            LogLevel.DEBUG -> Level.FINE
+            LogLevel.INFO -> Level.INFO
+            LogLevel.WARNING -> Level.WARNING
+            LogLevel.SEVERE -> Level.SEVERE
+        }
+        logger.level = javaLevel
+        
         if (debugEnabled) {
-            info("${ChatColor.YELLOW}Debug mode enabled${if (verboseEnabled) " (verbose)" else ""}")
+            info("${ChatColor.YELLOW}Debug mode enabled${if (verboseEnabled) " (verbose)" else ""} with log level: $logLevel")
         }
     }
     
     /**
-     * Logs an informational message.
+     * Logs an informational message if the current log level allows it.
      *
      * @param message The message to log
      */
     fun info(message: String) {
-        logger.info(message)
+        if (debugEnabled && logLevel.value <= LogLevel.INFO.value) {
+            logger.info(message)
+        }
     }
     
     /**
-     * Logs a warning message.
+     * Logs a warning message if the current log level allows it.
      *
      * @param message The warning message to log
      */
     fun warning(message: String) {
-        logger.warning(message)
+        if (debugEnabled && logLevel.value <= LogLevel.WARNING.value) {
+            logger.warning(message)
+        }
     }
     
     /**
      * Logs a severe error message.
+     * Severe messages are always logged regardless of level.
      *
      * @param message The error message to log
      */
@@ -68,44 +102,61 @@ object LoggingService {
     }
     
     /**
-     * Logs a debug message if debug mode is enabled.
-     * Always logs if verbose mode is enabled.
+     * Logs a debug message if debug mode is enabled and the current log level allows it.
      *
      * @param message The debug message to log
      */
     fun debug(message: String) {
-        if (debugEnabled) {
+        // Only process debug messages if debug is enabled AND log level includes DEBUG
+        if (debugEnabled && logLevel == LogLevel.DEBUG) {
             if (verboseEnabled) {
                 // In verbose mode, show all debug messages in console
-                logger.info("[DEBUG] $message")
+                // Use direct Java logger call to bypass level checks
+                logger.log(Level.FINE, "[DEBUG] $message")
             } else {
                 // In normal debug mode, only log when explicitly requested
                 if (message.startsWith("!")) {
-                    logger.info("[DEBUG] ${message.substring(1)}")
+                    logger.log(Level.FINE, "[DEBUG] ${message.substring(1)}")
                 }
             }
         }
     }
     
     /**
-     * Logs a debug warning message if debug mode is enabled.
+     * Logs a debug warning message if debug mode is enabled and the current log level allows it.
      *
      * @param message The debug warning message to log
      */
     fun debugWarning(message: String) {
-        if (debugEnabled) {
-            logger.warning("[DEBUG] $message")
+        if (debugEnabled && logLevel == LogLevel.DEBUG) {
+            logger.log(Level.WARNING, "[DEBUG] $message")
         }
     }
     
     /**
-     * Logs a message at the specified level.
+     * Logs a message at the specified level if the current log level allows it.
      *
      * @param level The log level
      * @param message The message to log
      */
     fun log(level: Level, message: String) {
-        logger.log(level, message)
+        // If debug is disabled, only log SEVERE messages
+        if (!debugEnabled && level != Level.SEVERE) {
+            return
+        }
+        
+        // Map Java logging levels to our custom levels
+        val shouldLog = when (level) {
+            Level.FINE, Level.FINER, Level.FINEST -> logLevel.value <= LogLevel.DEBUG.value
+            Level.INFO, Level.CONFIG -> logLevel.value <= LogLevel.INFO.value
+            Level.WARNING -> logLevel.value <= LogLevel.WARNING.value
+            Level.SEVERE -> true // Always log severe
+            else -> true // Default to logging
+        }
+        
+        if (shouldLog) {
+            logger.log(level, message)
+        }
     }
     
     /**
@@ -124,5 +175,14 @@ object LoggingService {
      */
     fun isVerboseEnabled(): Boolean {
         return verboseEnabled
+    }
+    
+    /**
+     * Gets the current log level.
+     *
+     * @return The current log level
+     */
+    fun getLogLevel(): LogLevel {
+        return logLevel
     }
 } 

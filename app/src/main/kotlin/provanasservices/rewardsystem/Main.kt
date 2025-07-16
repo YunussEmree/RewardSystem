@@ -39,6 +39,7 @@ class Main : JavaPlugin() {
         
         // Initialize logging service first so all subsequent log calls work
         LoggingService.initialize(this)
+        LoggingService.updateDebugState()
         LoggingService.info("${ChatColor.GREEN}RewardSystem initializing...")
         
         // Initialize LoggingUtility

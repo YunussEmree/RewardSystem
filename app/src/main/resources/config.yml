@@ -21,6 +21,7 @@ Debug:
   #         and issues that prevent the plugin from functioning properly.
   #         Use when minimal logging information is desired.
   level: DEBUG    # Available levels: DEBUG, INFO, WARNING, SEVERE
+  verbose: true
 
 # Database Settings
 Database:

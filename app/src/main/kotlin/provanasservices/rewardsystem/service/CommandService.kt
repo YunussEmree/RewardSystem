@@ -111,6 +111,7 @@ object CommandService {
         val expression = mathChanceExpressions[command] ?: return 0.0
         
         LoggingService.debug("Evaluating chance expression: $expression for player ${player.name}")
+        println("Evaluating chance expression: $expression for player ${player.name}")
         val processedExpression = MathEvaluator.evaluateExpression(expression, player, roundingMode)
         
         return try {

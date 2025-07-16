@@ -256,7 +256,7 @@ class RewardService(private val plugin: Main) {
                 if (isLikelyChanceCommand(command)) {
                     LoggingService.warning("Found command in regular rewards that appears to be a chance command: \"$command\"")
                     // Don't route through chance system, just treat as regular command for consistency
-                    regularCommands.add(command)
+                    regularCommands.add(command) // !
                 } else {
                     regularCommands.add(command)
                 }
@@ -306,6 +306,7 @@ class RewardService(private val plugin: Main) {
             reward.rewards[rank]?.forEach { command ->
                 if (isLikelyChanceCommand(command)) {
                     LoggingService.warning("Found command in position $rank rewards that appears to be a chance command: \"$command\"")
+
                     // Remove routing through chance system with 100% probability
                     regularCommands.add(command)
                 } else {
@@ -814,6 +815,7 @@ class RewardService(private val plugin: Main) {
                 // Strip chance expression before executing
                 executableCommand = stripChanceExpressions(executableCommand)
                 LoggingService.debug("Command ready for Minecraft: \"$executableCommand\"")
+                LoggingService.debug("chance: ")
             }
             
             // Execute the command with Minecraft-compatible syntax
@@ -965,6 +967,7 @@ class RewardService(private val plugin: Main) {
             
             // Pattern 2: Strip simple percentage chances at end: "command 50.0%"
             val percentageMatch = Regex("(.*?)\\s+\\d+\\.?\\d*%$").find(command)
+            LoggingService.debug("chance: " + percentageMatch)
             if (percentageMatch != null) {
                 result = percentageMatch.groupValues.getOrNull(1)?.trim()
                 if (result != null && result.isNotBlank()) {

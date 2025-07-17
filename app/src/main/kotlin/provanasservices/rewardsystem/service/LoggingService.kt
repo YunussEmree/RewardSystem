@@ -1,9 +1,10 @@
 package provanasservices.rewardsystem.service
 
-import org.bukkit.ChatColor
 import org.bukkit.plugin.java.JavaPlugin
 import java.util.logging.Level
 import java.util.logging.Logger
+
+import java.util.logging.LogManager
 
 /**
  * Service class for centralized logging throughout the plugin.
@@ -42,33 +43,37 @@ object LoggingService {
      * Updates the debug state from the configuration.
      * Call this after config reload to reflect changes.
      */
+
     fun updateDebugState() {
-        debugEnabled = plugin.config.getBoolean("Debug.enabled", false)
+        debugEnabled   = plugin.config.getBoolean("Debug.enabled", false)
         verboseEnabled = plugin.config.getBoolean("Debug.verbose", false)
-        
-        // Set the log level from config
-        val configLevel = plugin.config.getString("Debug.level", "WARNING")?.uppercase() ?: "WARNING"
-        logLevel = try {
-            LogLevel.valueOf(configLevel)
-        } catch (e: IllegalArgumentException) {
-            warning("Invalid log level in config: $configLevel. Using WARNING level.")
+        val configLevel = plugin.config.getString("Debug.level", "WARNING")!!.uppercase()
+        logLevel = try { LogLevel.valueOf(configLevel) } catch (e: IllegalArgumentException) {
+            warning("Invalid log level: $configLevel, defaulting to WARNING.")
             LogLevel.WARNING
         }
-        
-        // Set the Java logger level to match our configuration
-        val javaLevel = when(logLevel) {
-            LogLevel.DEBUG -> Level.FINE
-            LogLevel.INFO -> Level.INFO
+
+        // Java Logger seviyesini hesapla
+        val javaLevel = when (logLevel) {
+            LogLevel.DEBUG   -> Level.FINE
+            LogLevel.INFO    -> Level.INFO
             LogLevel.WARNING -> Level.WARNING
-            LogLevel.SEVERE -> Level.SEVERE
+            LogLevel.SEVERE  -> Level.SEVERE
         }
+        // Logger’a uygula
         logger.level = javaLevel
-        
+
+        // Root handler’ları da aynı seviyeye getir
+        val rootLogger = LogManager.getLogManager().getLogger("")
+        rootLogger.level = javaLevel
+        rootLogger.handlers.forEach { it.level = javaLevel }
+
         if (debugEnabled) {
-            info("${ChatColor.YELLOW}Debug mode enabled${if (verboseEnabled) " (verbose)" else ""} with log level: $logLevel")
+            info("Debug mode enabled${if (verboseEnabled) " (verbose)" else ""} at $logLevel")
         }
     }
-    
+
+
     /**
      * Logs an informational message if the current log level allows it.
      *
@@ -108,17 +113,9 @@ object LoggingService {
      */
     fun debug(message: String) {
         // Only process debug messages if debug is enabled AND log level includes DEBUG
-        if (debugEnabled && logLevel == LogLevel.DEBUG) {
-            if (verboseEnabled) {
-                // In verbose mode, show all debug messages in console
-                // Use direct Java logger call to bypass level checks
-                logger.log(Level.FINE, "[DEBUG] $message")
-            } else {
-                // In normal debug mode, only log when explicitly requested
-                if (message.startsWith("!")) {
-                    logger.log(Level.FINE, "[DEBUG] ${message.substring(1)}")
-                }
-            }
+        if (debugEnabled && logLevel.value <= LogLevel.DEBUG.value) {
+                    logger.fine("[DEBUG] $message")
+
         }
     }
     

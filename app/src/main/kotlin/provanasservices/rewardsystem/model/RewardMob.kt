@@ -142,7 +142,7 @@ class RewardMob {
     fun worldEquals(world: String): Boolean {
         val plugin = Main.getInstance()
         if (plugin.config.getBoolean("Debug.enabled")) {
-            plugin.logger.info("[REWARDSYSTEM DEBUG] World comparison - Input: '$world', Config: '${this.enabledWorld}'")
+            LoggingService.debug("World comparison - Input: '$world', Config: '${this.enabledWorld}'")
         }
         
         return if (enabledWorld == null || enabledWorld!!.isEmpty()) true else enabledWorld.equals(world, ignoreCase = true)

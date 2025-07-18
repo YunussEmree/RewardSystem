@@ -224,65 +224,44 @@ class RewardService(private val plugin: Main) {
         
         return ranks
     }
-    
+
     /**
-     * Processes rewards for all players regardless of rank.
-     *
-     * @param players List of valid players
-     * @param reward The reward configuration
-     * @param entity The entity that was killed
+     * Processes guaranteed and chance-based "all" rewards for each player.
      */
     private fun processAllRewards(
         players: List<Player>,
         reward: RewardMob,
         entity: LivingEntity
     ) {
-        // Skip if no "all" rewards configured
-        val allRewards = reward.allRewards
+        val allRewards = reward.allRewards ?: emptyList()
         val allChanceRewards = reward.allChanceRewards
-        if (allRewards.isNullOrEmpty() && allChanceRewards.isEmpty()) {
-            return
-        }
-        
+        if (allRewards.isEmpty() && allChanceRewards.isEmpty()) return
+
         for (player in players) {
             val damage = playerDamageMap[player.name] ?: 0.0
-            
-            // Process regular rewards
-            val regularCommands = mutableListOf<String>()
-            val chanceCommands = mutableListOf<RewardMob.ChanceReward>()
-            
-            // Double-check each command to make sure it's categorized correctly
-            allRewards?.forEach { command ->
-                if (isLikelyChanceCommand(command)) {
-                    LoggingService.warning("Found command in regular rewards that appears to be a chance command: \"$command\"")
-                    // Don't route through chance system, just treat as regular command for consistency
-                    regularCommands.add(command) // !
+
+            // Guaranteed rewards
+            allRewards.forEach { cmd ->
+                LoggingService.debug("Regular 'all' for \${player.name}: \$cmd")
+                executeCommand(player, cmd, damage, entity)
+            }
+
+            // Chance-based rewards
+            allChanceRewards.forEach { chanceReward ->
+                LoggingService.debug("Chance-all check: \"\${chanceReward.command}\"")
+                val pct = chanceReward.chance ?: MathEvaluator.evaluate(chanceReward.mathExpression!!, player).toDouble()
+                if (shouldGiveChanceReward(pct)) {
+                    LoggingService.debug("Passed chance (\${pct}%) for \"\${chanceReward.command}\"")
+                    executeCommand(player, chanceReward.command, damage, entity)
                 } else {
-                    regularCommands.add(command)
+                    LoggingService.debug("Skipped chance (\${pct}%) for \"\${chanceReward.command}\"")
                 }
-            }
-            
-            // Execute regular commands
-            regularCommands.forEach { command ->
-                LoggingService.debug("Executing regular 'all' reward for player ${player.name}")
-                executeCommand(player, command, damage, entity)
-            }
-            
-            // Process chance rewards
-            if (allChanceRewards.isNotEmpty()) {
-                LoggingService.debug("Processing ${allChanceRewards.size} chance 'all' rewards for player ${player.name}")
-                processChanceRewards(allChanceRewards, player, damage, entity)
             }
         }
     }
-    
+
     /**
-     * Processes position-specific rewards.
-     *
-     * @param players List of valid players
-     * @param reward The reward configuration
-     * @param damageRanks Map of player names to their rank positions
-     * @param entity The entity that was killed
+     * Processes position-specific rewards: guaranteed then chance-based.
      */
     private fun processPositionRewards(
         players: List<Player>,
@@ -291,75 +270,33 @@ class RewardService(private val plugin: Main) {
         entity: LivingEntity
     ) {
         for (player in players) {
-            // Get player's ranking position, or assign last place if not found
             val rank = damageRanks[player.name] ?: damageRanks.size + 1
             val damage = playerDamageMap[player.name] ?: 0.0
-            
-            // Check if player is the last hitter
-            val isLastHitter = Main.lastToucherMap[entity.uniqueId] == player.name
-            
-            // Process regular position rewards
-            val regularCommands = mutableListOf<String>()
-            val chanceCommands = mutableListOf<RewardMob.ChanceReward>()
-            
-            // Double-check each command to make sure it's categorized correctly
-            reward.rewards[rank]?.forEach { command ->
-                if (isLikelyChanceCommand(command)) {
-                    LoggingService.warning("Found command in position $rank rewards that appears to be a chance command: \"$command\"")
 
-                    // Remove routing through chance system with 100% probability
-                    regularCommands.add(command)
+            // Guaranteed position rewards
+            reward.rewards[rank]?.forEach { cmd ->
+                LoggingService.debug("Position $rank for ${player.name}: $cmd")
+                executeCommand(player, cmd, damage, entity)
+            }
+
+            // Chance position rewards
+            reward.chanceRewards[rank]?.forEach { chanceReward ->
+                LoggingService.debug("Chance-pos($rank): \"${chanceReward.command}\"")
+                val pct = chanceReward.chance ?: MathEvaluator.evaluate(chanceReward.mathExpression!!, player).toDouble()
+                if (shouldGiveChanceReward(pct)) {
+                    LoggingService.debug("Passed chance-pos($rank) (${pct}%) for \"${chanceReward.command}\"")
+                    executeCommand(player, chanceReward.command, damage, entity)
                 } else {
-                    regularCommands.add(command)
+                    LoggingService.debug("Skipped chance-pos($rank) (${pct}%) for \"${chanceReward.command}\"")
                 }
             }
-            
-            // Execute regular commands
-            regularCommands.forEach { command ->
-                LoggingService.debug("Executing regular position reward for player ${player.name} at rank $rank")
-                executeCommand(player, command, damage, entity)
-            }
-            
-            // Process last hit rewards (if configured)
-            if (isLastHitter && reward.lastHitRewards?.isNotEmpty() == true) {
-                LoggingService.debug("Processing last hit rewards for player ${player.name}")
-                
-                // Safety check for last hit rewards too
-                val regularLastHitCommands = mutableListOf<String>()
-                val chanceLastHitCommands = mutableListOf<RewardMob.ChanceReward>()
-                
-                reward.lastHitRewards?.forEach { command ->
-                    if (isLikelyChanceCommand(command)) {
-                        LoggingService.warning("Found last hit command that appears to be a chance command: \"$command\"")
-                        // Remove routing through chance system with 100% probability
-                        regularLastHitCommands.add(command)
-                    } else {
-                        regularLastHitCommands.add(command)
-                    }
+
+            // Last-hit rewards
+            if (Main.lastToucherMap[entity.uniqueId] == player.name && reward.lastHitRewards.isNotEmpty()) {
+                reward.lastHitRewards.forEach { cmd ->
+                    LoggingService.debug("Last-hit for ${player.name}: $cmd")
+                    executeCommand(player, cmd, damage, entity)
                 }
-                
-                // Execute regular last hit commands
-                regularLastHitCommands.forEach { command ->
-                    executeCommand(player, command, damage, entity)
-                }
-                
-                // Process chance last hit commands
-                if (chanceLastHitCommands.isNotEmpty()) {
-                    LoggingService.debug("Processing ${chanceLastHitCommands.size} chance last-hit rewards for player ${player.name}")
-                    processChanceRewards(chanceLastHitCommands, player, damage, entity)
-                }
-            }
-            
-            // Get all chance commands for this position
-            val positionChanceRewards = reward.chanceRewards[rank]?.toMutableList() ?: mutableListOf()
-            
-            // Add any commands that were reclassified as chance commands
-            positionChanceRewards.addAll(chanceCommands)
-            
-            // Process chance position rewards
-            if (positionChanceRewards.isNotEmpty()) {
-                LoggingService.debug("Processing ${positionChanceRewards.size} chance rewards for player ${player.name} at rank $rank")
-                processChanceRewards(positionChanceRewards, player, damage, entity)
             }
         }
     }

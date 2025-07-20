@@ -22,6 +22,8 @@ Debug:
   #         Use when minimal logging information is desired.
   level: DEBUG    # Available levels: DEBUG, INFO, WARNING, SEVERE
 
+no_one: "No One"  # Placeholder for no one, used in messages
+
 # Database Settings
 Database:
   type: sqlite    # Can use 'sqlite' or 'mysql'
@@ -40,23 +42,15 @@ MinimumDamageRequirement: 5.0  # Global minimum damage requirement
 
 ##Extra Placeholders
 #
-#  %player% - Player Name
-#  %killer% - Killer Name
-
-#  %personal_damage% / %damage% - Personal Damage
-#  %top_name_1% - Top Name 1
-#  %top_damage_1% - Top Damage 1
-#  %top_name_2% - Top Name 2
-#  %top_damage_2% - Top Damage 2
-#  %top_name_3% - Top Name 3
-#  %top_damage_3% - Top Damage 3
-#  ... continue for more top players
-#
-#  %time% - Cooldown Time
-#
-#  %entity% - Killed Entity Type
-#  %world% - Killed Entity World
-#  %position% - Killed Entity Position
+#  %player%          # -> the individual recipient
+#  %killer%          # -> who landed the last hit
+#  %personal_damage% # -> how much *you* didl Damage
+#  %top_name_1%..3%  # already handled
+#  %top_damage_1%..3%# already handled
+#  %time%            # (only in cooldown messages)
+#  %entity%          # entity.type
+#  %world%           # entity.world.name
+#  %position%        # x,y,z of the mob
 
 
 # Example Reward Configurations

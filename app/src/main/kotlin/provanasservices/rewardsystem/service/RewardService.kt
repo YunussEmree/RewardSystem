@@ -5,9 +5,7 @@ import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Player
 import provanasservices.rewardsystem.Main
 import provanasservices.rewardsystem.model.RewardMob
-import java.util.*
 import java.util.concurrent.ThreadLocalRandom
-import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 import provanasservices.rewardsystem.util.MathEvaluator
 
@@ -16,122 +14,53 @@ import provanasservices.rewardsystem.util.MathEvaluator
  * Handles reward validation, distribution, and messaging.
  */
 class RewardService(private val plugin: Main) {
-    
+
     private val playerDamageMap = HashMap<String, Double>()
-    
+
     /**
      * Filters players who are valid to receive rewards.
-     * Checks permissions and minimum damage requirements.
-     *
-     * @param damageMap Map of player names to damage amounts
-     * @param reward The reward configuration to validate against
-     * @param totalDamage Total damage dealt to the entity
-     * @return List of valid players
      */
     fun getValidPlayersForReward(
         damageMap: HashMap<String, Double>,
         reward: RewardMob,
         totalDamage: Double
     ): List<Player> {
-        val validPlayers = ArrayList<Player>()
-        
-        // Check global minimum damage setting
-        val globalMinDamage = Main.minimumDamageRequirement
-        
-        // Check mob-specific minimum damage setting
-        val mobMinDamage = reward.minimumDamage
-        
-        // Calculate percentage-based minimum damage
-        val percentMinDamage = if (reward.minimumDamagePercent > 0) {
-            totalDamage * (reward.minimumDamagePercent / 100.0)
-        } else {
-            0.0
+        val validPlayers = mutableListOf<Player>()
+        val globalMin = Main.minimumDamageRequirement
+        val mobMin = reward.minimumDamage
+        val percentMin = if (reward.minimumDamagePercent > 0)
+            totalDamage * (reward.minimumDamagePercent / 100) else 0.0
+        val effectiveMin = maxOf(globalMin, mobMin, percentMin)
+
+        LoggingService.debug("Minimum damage: global=$globalMin, mob=$mobMin, percent=$percentMin, effective=$effectiveMin")
+
+        for ((name, dmg) in damageMap) {
+            if (dmg < effectiveMin) continue
+            val player = Bukkit.getPlayerExact(name) ?: continue
+            if (isOnCooldown(player, reward)) continue
+            playerDamageMap[name] = dmg
+            validPlayers += player
         }
-        
-        // Use the highest minimum damage value
-        val effectiveMinDamage = maxOf(globalMinDamage, mobMinDamage, percentMinDamage)
-        
-        LoggingService.debug("Minimum damage requirements - Global: $globalMinDamage, Mob: $mobMinDamage, Percent: $percentMinDamage, Effective: $effectiveMinDamage")
-        
-        for ((playerName, damage) in damageMap) {
-            // Check if player has contributed enough damage
-            if (damage < effectiveMinDamage) {
-                LoggingService.debug("Player $playerName didn't deal enough damage: $damage < $effectiveMinDamage")
-                continue
-            }
-            
-            // Get player object
-            val player = Bukkit.getPlayerExact(playerName)
-            if (player == null) {
-                LoggingService.debug("Player $playerName is not online")
-                continue
-            }
-            
-            // Check cooldown
-            if (isPlayerOnCooldown(player, reward)) {
-                LoggingService.debug("Player $playerName is on cooldown for reward ${reward.id}")
-                continue
-            }
-            
-            // Store player's damage for later use
-            playerDamageMap[player.name] = damage
-            
-            // Add to valid players
-            validPlayers.add(player)
-        }
-        
         return validPlayers
     }
-    
-    /**
-     * Checks if a player is on cooldown for a specific reward.
-     *
-     * @param player The player to check
-     * @param reward The reward configuration
-     * @return true if player is on cooldown, false otherwise
-     */
-    private fun isPlayerOnCooldown(player: Player, reward: RewardMob): Boolean {
-        // Skip cooldown check if cooldown is disabled
-        if (reward.cooldown <= 0) {
+
+    private fun isOnCooldown(player: Player, reward: RewardMob): Boolean {
+        if (reward.cooldown <= 0) return false
+        val now = System.currentTimeMillis()
+        val expiry = reward.cooldowns[player.uniqueId]
+        if (expiry == null || now > expiry) {
+            reward.cooldowns.remove(player.uniqueId)
             return false
         }
-        
-        val playerUUID = player.uniqueId
-        val expiry = reward.cooldowns[playerUUID]
-        
-        // If player has no cooldown, they are not on cooldown
-        if (expiry == null) {
-            return false
-        }
-        
-        // Check if cooldown has expired
-        val currentTime = System.currentTimeMillis()
-        if (currentTime > expiry) {
-            // Cooldown expired, remove from map
-            reward.cooldowns.remove(playerUUID)
-            return false
-        }
-        
-        // Player is on cooldown, show remaining time if message is configured
         if (reward.cooldownMessage.isNotEmpty()) {
-            val remainingMillis = expiry - currentTime
-            val formattedTime = reward.cooldownType.formatRemaining(remainingMillis)
-            val message = reward.cooldownMessage.replace("%time%", formattedTime)
-            player.sendMessage(Main.translateColors(message))
+            val rem = reward.cooldownType.formatRemaining(expiry - now)
+            player.sendMessage(Main.translateColors(reward.cooldownMessage.replace("%time%", rem)))
         }
-        
-        // Player is on cooldown
         return true
     }
-    
+
     /**
-     * Distributes rewards to players based on their damage contribution.
-     *
-     * @param players List of valid players
-     * @param entity The entity that was killed
-     * @param reward The reward configuration
-     * @param damageMap Map of player names to damage amounts
-     * @param totalDamage Total damage dealt to the entity
+     * Distributes rewards to valid players.
      */
     fun distributeRewards(
         players: List<Player>,
@@ -140,166 +69,81 @@ class RewardService(private val plugin: Main) {
         damageMap: HashMap<String, Double>,
         totalDamage: Double
     ) {
-        LoggingService.info("Distributing rewards for entity ${entity.type.name} (${entity.name}) with ID ${reward.id}")
-        LoggingService.debug("Players to reward: ${players.size} (${players.joinToString { it.name }})")
-        
+        LoggingService.info("Distributing rewards for ${entity.type} [${reward.id}]")
         try {
-            // Set cooldowns for all players
             setupCooldowns(players, reward)
-            LoggingService.debug("Cooldowns set up for ${players.size} players")
-            
-            // Copy damage data to our local map
-            damageMap.forEach { (player, damage) -> 
-                playerDamageMap[player] = damage
-            }
-            LoggingService.debug("Damage map copied: ${playerDamageMap.entries.joinToString { "${it.key}=${it.value}" }}")
-            
-            // Calculate damage ranks
-            val damageRanks = calculateDamageRanks(damageMap)
-            LoggingService.debug("Damage ranks calculated: ${damageRanks.entries.joinToString { "${it.key}=rank ${it.value}" }}")
-            
-            // Process "all" rewards
-            val hasAllRewards = !(reward.allRewards.isNullOrEmpty() && reward.allChanceRewards.isEmpty())
-            LoggingService.debug("Processing 'all' rewards: ${if (hasAllRewards) "yes" else "no all rewards configured"}")
+            damageMap.forEach { (k, v) -> playerDamageMap[k] = v }
             processAllRewards(players, reward, entity)
-            
-            // Process position-specific rewards
-            val hasPositionRewards = reward.rewards.isNotEmpty() || reward.chanceRewards.isNotEmpty()
-            LoggingService.debug("Processing position rewards: ${if (hasPositionRewards) "yes" else "no position rewards configured"}")
-            processPositionRewards(players, reward, damageRanks, entity)
-            
-            // Send reward messages
-            val hasMessages = !reward.rewardMessages.isNullOrEmpty()
-            LoggingService.debug("Sending reward messages: ${if (hasMessages) "yes" else "no messages configured"}")
-            sendRewardMessages(reward, entity, damageRanks)
-            
-            // Clear the damage map
+            processPositionRewards(players, reward, entity)
+            sendMessages(reward, entity)
             playerDamageMap.clear()
-            
-            LoggingService.info("Rewards successfully distributed for entity ${entity.type.name}")
         } catch (e: Exception) {
-            LoggingService.severe("Error during reward distribution: ${e.message}")
-            e.printStackTrace()
+            LoggingService.severe("Error distributing: ${e.message}")
         }
     }
-    
-    /**
-     * Sets up cooldowns for players.
-     *
-     * @param players List of players
-     * @param reward The reward configuration
-     */
+
     private fun setupCooldowns(players: List<Player>, reward: RewardMob) {
-        // Skip if cooldown is disabled
-        if (reward.cooldown <= 0) {
-            return
+        if (reward.cooldown > 0) {
+            val now = System.currentTimeMillis()
+            val ms = reward.cooldownType.toMillis(reward.cooldown)
+            players.forEach { reward.cooldowns[it.uniqueId] = now + ms }
         }
-        
-        val now = System.currentTimeMillis()
-        val cooldownMillis = reward.cooldownType.toMillis(reward.cooldown)
-        
-        for (player in players) {
-            reward.cooldowns[player.uniqueId] = now + cooldownMillis
-        }
-    }
-    
-    /**
-     * Calculates player rankings based on damage dealt.
-     *
-     * @param damageMap Map of player names to damage amounts
-     * @return Map of player names to their rank positions
-     */
-    private fun calculateDamageRanks(damageMap: HashMap<String, Double>): Map<String, Int> {
-        // Sort players by damage (descending)
-        val sortedEntries = damageMap.entries.sortedByDescending { it.value }
-        
-        // Create rank map
-        val ranks = HashMap<String, Int>()
-        var currentRank = 1
-        
-        for ((playerName, _) in sortedEntries) {
-            ranks[playerName] = currentRank
-            currentRank++
-        }
-        
-        return ranks
     }
 
-    /**
-     * Processes guaranteed and chance-based "all" rewards for each player.
-     */
-    private fun processAllRewards(
-        players: List<Player>,
-        reward: RewardMob,
+    private fun processAllRewards(players: List<Player>, reward: RewardMob, entity: LivingEntity) {
+        val all = reward.allRewards ?: emptyList()
+        if (all.isEmpty() && reward.allChanceRewards.isEmpty()) return
+        players.forEach { p ->
+            val dmg = playerDamageMap[p.name] ?: 0.0
+            // regular all rewards
+            all.forEach { cmd -> executeRewardCommand(p, cmd, dmg, entity) }
+            // chance all rewards
+            reward.allChanceRewards.forEach { chance -> executeRewardCommand(p, chance.commands, dmg, entity) }
+        }
+    }
+
+    private fun processPositionRewards(players: List<Player>, reward: RewardMob, entity: LivingEntity) {
+        val ranks = playerDamageMap.entries
+            .sortedByDescending { it.value }
+            .mapIndexed { i, e -> e.key to (i + 1) }
+            .toMap()
+        players.forEach { p ->
+            val rank = ranks[p.name] ?: ranks.size + 1
+            val dmg = playerDamageMap[p.name] ?: 0.0
+            // position rewards
+            reward.rewards[rank]?.forEach { cmd -> executeRewardCommand(p, cmd, dmg, entity) }
+            reward.chanceRewards[rank]?.forEach { chance -> executeRewardCommand(p, chance.commands, dmg, entity) }
+            // last-hit rewards
+            if (Main.lastToucherMap[entity.uniqueId] == p.name) {
+                reward.lastHitRewards?.forEach { cmd -> executeRewardCommand(p, cmd, dmg, entity) }
+            }
+        }
+    }
+
+    private fun executeRewardCommand(
+        player: Player,
+        command: String,
+        damage: Double,
         entity: LivingEntity
     ) {
-        val allRewards = reward.allRewards ?: emptyList()
-        val allChanceRewards = reward.allChanceRewards
-        if (allRewards.isEmpty() && allChanceRewards.isEmpty()) return
-
-        for (player in players) {
-            val damage = playerDamageMap[player.name] ?: 0.0
-
-            // Guaranteed rewards
-            allRewards.forEach { cmd ->
-                LoggingService.debug("Regular 'all' for \${player.name}: \$cmd")
-                executeCommand(player, cmd, damage, entity)
-            }
-
-            // Chance-based rewards
-            allChanceRewards.forEach { chanceReward ->
-                LoggingService.debug("Chance-all check: \"\${chanceReward.command}\"")
-                val pct = chanceReward.chance ?: MathEvaluator.evaluate(chanceReward.mathExpression!!, player).toDouble()
-                if (shouldGiveChanceReward(pct)) {
-                    LoggingService.debug("Passed chance (\${pct}%) for \"\${chanceReward.command}\"")
-                    executeCommand(player, chanceReward.command, damage, entity)
-                } else {
-                    LoggingService.debug("Skipped chance (\${pct}%) for \"\${chanceReward.command}\"")
-                }
-            }
-        }
+        // parse command with chance; null if chance fails
+        val base = CommandService.parseCommandWithChance(command, player) ?: return
+        // process placeholders and math expressions
+        val roundingMode = plugin.config.getString("Settings.roundingMode", "none") ?: "none"
+        val processed = CommandService.processCommand(base, player, damage, roundingMode)
+        // dispatch command
+        CommandService.executeCommand(player, processed, null, LoggingService.isDebugEnabled())
     }
 
-    /**
-     * Processes position-specific rewards: guaranteed then chance-based.
-     */
-    private fun processPositionRewards(
-        players: List<Player>,
-        reward: RewardMob,
-        damageRanks: Map<String, Int>,
-        entity: LivingEntity
-    ) {
-        for (player in players) {
-            val rank = damageRanks[player.name] ?: damageRanks.size + 1
-            val damage = playerDamageMap[player.name] ?: 0.0
-
-            // Guaranteed position rewards
-            reward.rewards[rank]?.forEach { cmd ->
-                LoggingService.debug("Position $rank for ${player.name}: $cmd")
-                executeCommand(player, cmd, damage, entity)
-            }
-
-            // Chance position rewards
-            reward.chanceRewards[rank]?.forEach { chanceReward ->
-                LoggingService.debug("Chance-pos($rank): \"${chanceReward.command}\"")
-                val pct = chanceReward.chance ?: MathEvaluator.evaluate(chanceReward.mathExpression!!, player).toDouble()
-                if (shouldGiveChanceReward(pct)) {
-                    LoggingService.debug("Passed chance-pos($rank) (${pct}%) for \"${chanceReward.command}\"")
-                    executeCommand(player, chanceReward.command, damage, entity)
-                } else {
-                    LoggingService.debug("Skipped chance-pos($rank) (${pct}%) for \"${chanceReward.command}\"")
-                }
-            }
-
-            // Last-hit rewards
-            if (Main.lastToucherMap[entity.uniqueId] == player.name && reward.lastHitRewards.isNotEmpty()) {
-                reward.lastHitRewards.forEach { cmd ->
-                    LoggingService.debug("Last-hit for ${player.name}: $cmd")
-                    executeCommand(player, cmd, damage, entity)
-                }
-            }
-        }
+    private fun sendMessages(reward: RewardMob, entity: LivingEntity) {
+        MessageService.sendRewardMessages(
+            entity,
+            reward,
+            Main.damageMap[entity.uniqueId] ?: hashMapOf(),
+            Main.lastToucherMap[entity.uniqueId] ?: ""
+        )
     }
+
     
     /**
      * Determines if a command is likely a chance-based command that should go through the chance system.
@@ -904,7 +748,7 @@ class RewardService(private val plugin: Main) {
             
             // Pattern 2: Strip simple percentage chances at end: "command 50.0%"
             val percentageMatch = Regex("(.*?)\\s+\\d+\\.?\\d*%$").find(command)
-            LoggingService.debug("chance: " + percentageMatch)
+            LoggingService.debug("chance: " + percentageMatch.toString())
             if (percentageMatch != null) {
                 result = percentageMatch.groupValues.getOrNull(1)?.trim()
                 if (result != null && result.isNotBlank()) {

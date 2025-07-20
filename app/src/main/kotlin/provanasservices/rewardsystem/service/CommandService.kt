@@ -11,72 +11,18 @@ import java.util.regex.Pattern
  * Service class that manages command execution operations.
  * Parses commands, checks permissions, and executes them.
  */
-object CommandService {
+public object CommandService {
     /**
      * Storage for math expressions to be evaluated later as chance percentages
      */
     private val mathChanceExpressions = ConcurrentHashMap<String, String>()
-    
+
     // Pattern for detecting chance-based commands (e.g., "command 50%")
     private val chancePattern = Pattern.compile("(.*?)\\s+(\\d+\\.?\\d*)%$")
-    
+
     // Pattern for detecting math expressions in chance commands (e.g., "command {math:1+1}%")
     private val mathChancePattern = Pattern.compile("(.*?)\\s+\\{math:(.*?)\\}%$")
-    
-    /**
-     * Parses permission, chance percentage, and other information from a command.
-     * Returns a Triple containing the clean command, permission information, and chance percentage.
-     * 
-     * @param command Command to be parsed
-     * @return Triple<String, String?, Double?> (command, permission, chance percentage)
-     */
-    fun parseCommand(command: String): Triple<String, String?, Double?> {
-        // Extract permission information
-        val permPattern = "\\$(.*?)\\$".toRegex()
-        val permMatch = permPattern.find(command)
-        val permission = permMatch?.groups?.get(1)?.value
-        
-        // Command with permission information removed
-        val withoutPerm = if (permission != null) {
-            command.replace("$$permission$", "").trim()
-        } else {
-            command
-        }
-        
-        // Check for percentage at the end
-        val words = withoutPerm.split(" ")
-        val lastWord = words.lastOrNull()
-        
-        if (lastWord != null && lastWord.endsWith("%")) {
-            try {
-                // First check if it's a math expression
-                val mathPattern = "\\{math:(.*?)\\}%".toRegex()
-                val mathMatch = mathPattern.find(lastWord)
-                
-                if (mathMatch != null) {
-                    // Math expression found, we'll evaluate it later
-                    val mathExpression = mathMatch.groupValues[1]
-                    val cleanCommand = withoutPerm.substring(0, withoutPerm.length - lastWord.length).trim()
-                    
-                    // Return Triple with mathExpression as placeholder
-                    return Triple(cleanCommand, permission, null).also {
-                        // Store the math expression for later evaluation
-                        mathChanceExpressions[cleanCommand] = mathExpression
-                    }
-                }
-                
-                // Standard percentage
-                val chance = lastWord.replace("%", "").toDouble()
-                val cleanCommand = withoutPerm.substring(0, withoutPerm.length - lastWord.length).trim()
-                return Triple(cleanCommand, permission, chance)
-            } catch (e: NumberFormatException) {
-                // Not a percentage
-            }
-        }
-        
-        return Triple(withoutPerm, permission, null)
-    }
-    
+
     /**
      * Processes a command and evaluates necessary placeholders and mathematical expressions.
      *
@@ -91,17 +37,17 @@ object CommandService {
         val basicReplaced = command
             .replace("%player%", player.name)
             .replace("%damage%", damage.toInt().toString())
-        
+
         // Process with PlaceholderAPI additionally
         val processedCmd = PlaceholderService.setBracketPlaceholders(player, basicReplaced)
-        
+
         // Process mathematical expressions
         return MathEvaluator.processCommand(processedCmd, player, roundingMode)
     }
-    
+
     /**
      * Evaluates a mathematical expression for chance calculations.
-     * 
+     *
      * @param command The command that contains a stored math expression
      * @param player Player for placeholder context
      * @param roundingMode Rounding mode to use
@@ -109,11 +55,11 @@ object CommandService {
      */
     fun evaluateChanceExpression(command: String, player: Player, roundingMode: String = "none"): Double {
         val expression = mathChanceExpressions[command] ?: return 0.0
-        
+
         LoggingService.debug("Evaluating chance expression: $expression for player ${player.name}")
         println("Evaluating chance expression: $expression for player ${player.name}")
         val processedExpression = MathEvaluator.evaluateExpression(expression, player, roundingMode)
-        
+
         return try {
             val result = processedExpression.toDouble()
             LoggingService.debug("Chance calculation result: $result% (from expression: $expression)")
@@ -123,20 +69,10 @@ object CommandService {
             0.0
         }
     }
-    
-    /**
-     * Checks if the command has a stored math expression for chance calculation.
-     * 
-     * @param command The command to check
-     * @return true if the command has a math expression, false otherwise
-     */
-    fun hasChanceExpression(command: String): Boolean {
-        return mathChanceExpressions.containsKey(command)
-    }
-    
+
     /**
      * Executes a command safely and checks necessary permissions.
-     * 
+     *
      * @param player Player in the context for running the command
      * @param command Command to be executed
      * @param permission Required permission (null if no permission needed)
@@ -155,10 +91,11 @@ object CommandService {
         if (debug) {
             LoggingService.debug("Plugin dispatched command: $command")
         }
-        
+
         Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command)
         return true
     }
+
     /**
      * Parses a command string and processes chance-based commands.
      * If the command includes a percentage chance, it will randomly determine
@@ -174,59 +111,59 @@ object CommandService {
         if (mathMatcher.find()) {
             val baseCommand = mathMatcher.group(1).trim()
             val mathExpression = mathMatcher.group(2).trim()
-            
+
             LoggingService.debug("Found math-based chance command: $baseCommand with expression {math:$mathExpression}%")
-            
+
             // Store the math expression for evaluation
             val commandId = System.nanoTime().toString()
             mathChanceExpressions[commandId] = mathExpression
-            
+
             // Evaluate the expression to get the chance percentage
             val chancePercentage = evaluateChanceExpression(commandId, player)
-            
+
             // Randomly determine if command should run based on chance
             val shouldRun = chancePercentage > 0 && shouldExecute(chancePercentage)
-            
+
             // Clean up stored expression
             mathChanceExpressions.remove(commandId)
-            
+
             if (!shouldRun) {
                 // Chance check failed
                 LoggingService.debug("Chance check failed for command: $baseCommand (${chancePercentage}%)")
                 return null
             }
-            
+
             // Chance check passed, return the base command
             LoggingService.debug("Chance check passed for command: $baseCommand (${chancePercentage}%)")
             return baseCommand
         }
-        
+
         // Check if it's a standard chance command
         val matcher = chancePattern.matcher(command)
         if (matcher.find()) {
             val baseCommand = matcher.group(1).trim()
             val chancePercentage = matcher.group(2).toDouble()
-            
+
             LoggingService.debug("Found standard chance command: $baseCommand with chance $chancePercentage%")
-            
+
             // Randomly determine if command should run based on chance
             val shouldRun = chancePercentage > 0 && shouldExecute(chancePercentage)
-            
+
             if (!shouldRun) {
                 // Chance check failed
                 LoggingService.debug("Chance check failed for command: $baseCommand (${chancePercentage}%)")
                 return null
             }
-            
+
             // Chance check passed, return the base command
             LoggingService.debug("Chance check passed for command: $baseCommand (${chancePercentage}%)")
             return baseCommand
         }
-        
+
         // Not a chance-based command, return as is
         return command
     }
-    
+
     /**
      * Determines if a command should execute based on a chance percentage.
      *
@@ -236,11 +173,11 @@ object CommandService {
     private fun shouldExecute(chancePercentage: Double): Boolean {
         // Generate a random number between 0 and 100
         val randomValue = ThreadLocalRandom.current().nextDouble(100.0)
-        
+
         // Log the values for debugging
         LoggingService.debug("Chance roll: $randomValue vs threshold: $chancePercentage")
-        
+
         // Return true if the random value is less than the chance percentage
         return randomValue < chancePercentage
     }
-} 
+}

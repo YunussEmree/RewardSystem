@@ -23,6 +23,12 @@ class DamageTrackerService(private val plugin: Main) {
      * @param event The damage event to process
      */
     fun trackDamage(event: EntityDamageByEntityEvent) {
+
+        if (event.isCancelled) {
+                LoggingService.debug("Skipping damage tracking - event was cancelled")
+                return
+            }
+
         val entity = event.entity
         val damager = event.damager
         val damage = event.finalDamage

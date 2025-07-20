@@ -2,7 +2,6 @@ package provanasservices.rewardsystem.service
 
 import org.bukkit.entity.Arrow
 import org.bukkit.entity.Entity
-import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Player
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 import provanasservices.rewardsystem.Main

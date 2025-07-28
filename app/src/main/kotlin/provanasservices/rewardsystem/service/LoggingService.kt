@@ -107,19 +107,8 @@ object LoggingService {
      * @param message The debug message to log
      */
     fun debug(message: String) {
-        println("[REWARD SYSTEM DEBUG] $message") // Print to console for visibility
-        // Only process debug messages if debug is enabled AND log level includes DEBUG
-        if (debugEnabled && logLevel == LogLevel.DEBUG) {
-            if (verboseEnabled) {
-                // In verbose mode, show all debug messages in console
-                // Use direct Java logger call to bypass level checks
-                logger.log(Level.FINE, "[DEBUG] $message")
-            } else {
-                // In normal debug mode, only log when explicitly requested
-                if (message.startsWith("!")) {
-                    logger.log(Level.FINE, "[DEBUG] ${message.substring(1)}")
-                }
-            }
+        if (debugEnabled && logLevel.value <= LogLevel.DEBUG.value) {
+            logger.info("[REWARDSYSTEM DEBUG] $message")
         }
     }
     
